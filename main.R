@@ -25,6 +25,10 @@ plot_intro(COVID_19_cases_TX)
 plot_intro(Global_Mobility_Report)
 plot_correlation(COVID_19_cases_TX)
 
+dallas_cases <- subset(COVID_19_cases_TX, county_name == "Dallas County")
+plot(dallas_cases$date, dallas_cases$confirmed_cases, type = "l", col = 1, lwd = 3)
+lines(dallas_cases$date, dallas_cases$deaths, type = "l", col = 3, lwd = 3)
+
 # View Data
 
 # View(COVID_19_cases_plus_census)
