@@ -23,6 +23,7 @@ COVID_19_cases_plus_census <- read_csv("Datasets/COVID-19_cases_plus_census.csv"
 # COVID_19_cases_plus_census <- read_csv("Datasets/COVID-19_cases_plus_census_recent.csv") # Try This!
 COVID_19_cases_TX <- read_csv("Datasets/COVID-19_cases_TX_updated.csv")
 Global_Mobility_Report <- read_csv("Datasets/Global_Mobility_Report_current.csv", col_types =  cols(sub_region_2 = col_character()))
+County_Vaccine_Information <- read_csv("Datasets/County_Vaccine_Information.csv")
 
 # Data Explorer Code
 # Explain These Data
@@ -148,7 +149,19 @@ ggplot(counties_TX, aes(long, lat, label = county)) +
   geom_polygon(aes(group = group, fill = cases_per_1000)) +
   coord_quickmap() + 
   scale_fill_gradient(low = "yellow", high = "red") +
-  labs(title = "COVID-19 Cases per 1000 People", subtitle = "Only counties reporting 100+ cases")
+  labs(title = "COVID-19 Cases Per 1000 People", subtitle = "Only Counties Reporting 100+ Cases")
+
+# Worst Counties - Interestingly, The Counties With The Most Deaths Did Not Have Any Vaccine Sites (Unlisted)
+# North Texas Needs To Get Their Act Together!
+
+counties_TX %>% arrange((desc(cases_per_1000))) # Childress, Hale (Both North Texas, Hale Is East Adjacent To Lamb)
+counties_TX %>% arrange((desc(deaths_per_1000))) # Lamb, Cottle (Both North Texas, Cottle Is South Adjacent To Childress)
+counties_TX %>% arrange((desc(death_per_case))) # Sherman, Garza (Both North Texas, Sherman Borders Oklahoma)
+filter(County_Vaccine_Information, us_county %in% c("Childress County", "Hale County"))
+
+# Note: In Current Data, Worst Counties Are Loving (Cases, Deaths) McMullen, (Deaths), And Sabine (Deaths / Case)
+# Both Loving And McMullen Have No Vaccine Sites, Sabine With A Very Low Rate
+filter(County_Vaccine_Information, us_county %in% c("Sabine County"))
 
 # Adds Labels, Too Many!
 # geom_text_repel(data = counties_TX %>% filter(complete.cases(.)) %>% group_by(county) %>% 
