@@ -1,4 +1,3 @@
-
-*.csv
 .Rhistory
-Datasets*
+Datasets/*.csv
+Datasets/*.pdf
