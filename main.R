@@ -11,60 +11,90 @@ library(caret)
 library(mlbench)
 library(maps)
 library(DataExplorer)
+library(ggnewscale) 
+
+# Note: COVID_19_cases_TX Has Incrementing Data
+# Run With Updated Census Data, Interesting Results
+# Do Not Need To Run With Old TX Data; Incorporated (Same With GMR)
 
 # Read Data
 
 COVID_19_cases_plus_census <- read_csv("Datasets/COVID-19_cases_plus_census.csv")
-COVID_19_cases_TX <- read_csv("Datasets/COVID-19_cases_TX.csv")
-Global_Mobility_Report <- read_csv("Datasets/Global_Mobility_Report.csv", col_types =  cols(sub_region_2 = col_character()))
+# COVID_19_cases_plus_census <- read_csv("Datasets/COVID-19_cases_plus_census_recent.csv") # Try This!
+COVID_19_cases_TX <- read_csv("Datasets/COVID-19_cases_TX_updated.csv")
+Global_Mobility_Report <- read_csv("Datasets/Global_Mobility_Report_current.csv", col_types =  cols(sub_region_2 = col_character()))
 
 # Data Explorer Code
+# Explain These Data
 
 plot_intro(COVID_19_cases_plus_census)
 plot_intro(COVID_19_cases_TX)
 plot_intro(Global_Mobility_Report)
 plot_correlation(COVID_19_cases_TX)
 
-dallas_cases <- subset(COVID_19_cases_TX, county_name == "Dallas County")
-plot(dallas_cases$date, dallas_cases$confirmed_cases, type = "l", col = 1, lwd = 3)
-lines(dallas_cases$date, dallas_cases$deaths, type = "l", col = 3, lwd = 3)
-
 # View Data
 
-# View(COVID_19_cases_plus_census)
-# View(COVID_19_cases_TX)
-# View(Global_Mobility_Report)
+# https://www.hhs.gov/coronavirus/covid-19-vaccines/index.html
+# Plotting Deaths, Cases Against Time (Dallas)
 
+dallas_cases <- subset(COVID_19_cases_TX, county_name == "Dallas County")
+cbp1 <- c("#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2")
+cbp2 <- c("#555555", "#C21E56")
+
+ggplot(dallas_cases, mapping = aes(x = date, y = confirmed_cases, label_both)) + 
+  
+  geom_vline(aes(xintercept = as.Date("2020-04-30"), color = "1. Social Distancing Starts"), linetype = "dashed", size = 1) + # Social Distancing Starts (Dallas)
+  geom_vline(aes(xintercept = as.Date("2020-12-11"), color = "2. First Vaccine Releases"), linetype = "dashed", size = 1) + # Note: For Emergency Use, Persons Aged Over 16
+  geom_vline(aes(xintercept = as.Date("2021-08-23"), color = "3. FDA Approves First Vaccine"), linetype = "dashed", size = 1) + 
+  geom_vline(aes(xintercept = as.Date("2022-01-31"), color = "4. FDA Approves Second Vaccine"), linetype = "dashed", size = 1) +
+  geom_vline(aes(xintercept = as.Date("2022-06-17"), color = "5. Vaccine Authorized For Children"), linetype = "dashed", size = 1) +
+  
+  scale_color_manual(values = cbp1) +
+  labs(title = "Plot Displaying Cases / Deaths Over Three Years (Dallas, TX)", color = "Markers", linetype = "dashed", x = "Time", y = "Cases / Deaths") +
+  new_scale_color() + 
+
+  geom_line(aes(y = confirmed_cases, color = "Cases"), size = 1) + geom_line(aes(y = deaths, color = "Deaths"), size = 1) +
+  scale_color_manual(values = cbp2) +
+  labs(color = "Datasets") +
+  theme_minimal() +
+  theme(plot.title = element_text(hjust = 0.5))
+  
 # Make Character Factors, Filter TX
 
 cases <- COVID_19_cases_plus_census %>% mutate_if(is.character, factor)
 dim(cases)
 cases_TX <- COVID_19_cases_plus_census %>% filter(state == "TX")
 dim(cases_TX)
-summary(cases_TX[,1:10])
+summary(cases_TX[, 1:10])
 
 # Feature Ranking (After Factorizing)
+# Note: First Transform - Curse Of Dimensionality Example
 
 transform_census <- as.data.frame(sapply(COVID_19_cases_plus_census, as.numeric))
 transform_census <- transform_census %>% select_if(~ !any(is.na(.))) %>% select(-c(date, do_date))
-cor_census <- cor(transform_census[,-1])
+cor_census <- cor(transform_census[, -1])
 high_cor <- findCorrelation(cor_census, cutoff = 0.99995)
 colnames(transform_census)
 
-control <- trainControl(method="repeatedcv", number=10, repeats=3)
-model <- train(confirmed_cases~., data=transform_census, method="lm", preProcess="scale", trControl=control)
-importance <- varImp(model, scale=FALSE)
+# Good Example Of Feature Extraction
+
+control <- trainControl(method = "repeatedcv", number = 10, repeats = 3)
+model <- train(confirmed_cases~., data = transform_census, method = "lm", preProcess = "scale", trControl = control)
+importance <- varImp(model, scale = FALSE)
 print(importance)
 
 # Plot Above (Computationally Intensive)
 # ggcorrplot(cor_census, p.mat = cor_pmat(transform_census[,-1]), insig = "blank", hc.order = TRUE)
 # plot(importance)
 
-# Are there many counties with many cases?
+# Are There Many Counties With Cases?
+# Many Counties (Unpopulated) With Low Cases; Few (Dallas, Austin, Houston) With Many Cases
 
 ggplot(cases_TX, mapping = aes(confirmed_cases)) + geom_histogram(bins = 20)
 
-# Relationship between cases and deaths
+# Relationship Between Cases / Deaths
+# More Population -> More Cases, More Deaths
+# Note The Second Graph Simply Has An Added Fitting Line (Labels)
 
 ggplot(cases_TX, mapping = aes(x = confirmed_cases, y = deaths, size = total_pop)) + geom_point()
 ggplot(cases_TX, mapping = aes(x = confirmed_cases, y = deaths, label = county_name)) + 
@@ -72,16 +102,17 @@ ggplot(cases_TX, mapping = aes(x = confirmed_cases, y = deaths, label = county_n
   geom_point(mapping = aes(size = total_pop), color = "grey") + 
   geom_text_repel(data = subset(cases_TX, deaths >= 1000)) 
 
-# Calculate rates (per 1000 people)
+# Calculate Rates (Per 1000 People)
+# As Cases Increases, Deaths Does (Positive Correlation)
 
 cases_TX_select <- cases_TX %>% filter(confirmed_cases > 100) %>% 
   arrange(desc(confirmed_cases)) %>%    
   select(county_name, confirmed_cases, deaths, total_pop, median_income)
 
 cases_TX_select <- cases_TX_select %>% mutate(
-  cases_per_1000 = confirmed_cases/total_pop*1000, 
-  deaths_per_1000 = deaths/total_pop*1000, 
-  death_per_case = deaths/confirmed_cases)
+  cases_per_1000 = confirmed_cases / total_pop * 1000, 
+  deaths_per_1000 = deaths / total_pop * 1000, 
+  death_per_case = deaths / confirmed_cases)
 
 head(cases_TX_select)
 datatable(cases_TX_select) %>% formatRound(6:7, 4) %>% formatPercentage(8, 2)
@@ -91,19 +122,22 @@ ggplot(cases_TX_select, mapping = aes(x = cases_per_1000, y = deaths_per_1000, l
   geom_point(mapping = aes(size = total_pop), color = "grey") + 
   geom_text_repel(data = subset(cases_TX_select, deaths_per_1000 > quantile(deaths_per_1000, .95)))
 
-# Does death per case depend on population?
+# Does Death Per Case Depend On Population?
+# Yes, It Seems There Are Less Deaths In Populated Areas
 
-ggplot(cases_TX_select, mapping = aes(x= total_pop, y = deaths_per_1000, label = county_name)) + 
+ggplot(cases_TX_select, mapping = aes(x = total_pop, y = deaths_per_1000, label = county_name)) + 
   geom_smooth(method = lm) +
   geom_point(mapping = aes(size = total_pop), color = "grey") + 
   geom_text_repel(data = subset(cases_TX_select, deaths_per_1000 > quantile(deaths_per_1000, .95)))
 
 # What variables are correlated?
+# Expected Results (Check Uncorrelated)
 
-cor_TX <- cor(cases_TX_select[,-1])
-ggcorrplot(cor_TX, p.mat = cor_pmat(cases_TX_select[,-1]), insig = "blank", hc.order = TRUE)
+cor_TX <- cor(cases_TX_select[, -1])
+ggcorrplot(cor_TX, p.mat = cor_pmat(cases_TX_select[, -1]), insig = "blank", hc.order = TRUE)
 
-# Plot as a map (add variables to map data)
+# Plot As Map (Add Vars To Data Map)
+# Visualize Amount Of Cases Per County
 
 counties <- as_tibble(map_data("county"))
 counties_TX <- counties %>% dplyr::filter(region == "texas") %>% rename("county" = "subregion")
@@ -112,19 +146,22 @@ counties_TX <- counties_TX %>% left_join(cases_TX %>% select(c(county, cases_per
 
 ggplot(counties_TX, aes(long, lat, label = county)) + 
   geom_polygon(aes(group = group, fill = cases_per_1000)) +
-  # geom_text_repel(data = counties_TX %>% filter(complete.cases(.)) %>% group_by(county) %>% 
-  #    summarize(long = mean(long), lat = mean(lat)) %>% mutate(county = str_to_title(county))) +
   coord_quickmap() + 
-  scale_fill_gradient(low="yellow", high="red") +
+  scale_fill_gradient(low = "yellow", high = "red") +
   labs(title = "COVID-19 Cases per 1000 People", subtitle = "Only counties reporting 100+ cases")
 
-# Look at Dallas County over time. Are we flattening the curve?
+# Adds Labels, Too Many!
+# geom_text_repel(data = counties_TX %>% filter(complete.cases(.)) %>% group_by(county) %>% 
+# summarize(long = mean(long), lat = mean(lat)) %>% mutate(county = str_to_title(county))) +
+
+# Dallas County Over Time. Are We Flattening The Curve?
+# As Seen Above, Vaccine Releases Seem To Correlate To Curve Flattening (Not Social Distancing)
 
 cases_Dallas <- COVID_19_cases_TX %>% filter(county_name == "Dallas County" & state == "TX")
 dim(cases_Dallas)
 ggplot(cases_Dallas, aes(x = date, y = confirmed_cases)) + geom_line() + geom_smooth()
 
-# You probably should look at the new cases per day # The Effect of Staying at Home
+# Check New Cases Per Day, # Effect Of Staying At Home
 
 mobility <- Global_Mobility_Report %>% mutate_if(is.character, factor)
 dim(mobility)
