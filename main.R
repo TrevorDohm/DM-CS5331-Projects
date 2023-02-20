@@ -163,6 +163,15 @@ filter(County_Vaccine_Information, us_county %in% c("Childress County", "Hale Co
 # Both Loving And McMullen Have No Vaccine Sites, Sabine With A Very Low Rate
 filter(County_Vaccine_Information, us_county %in% c("Sabine County"))
 
+# Best Counties (Same Terms As Above)
+# Note For Current Data: El Paso, Hartley, Loving Did Best (However, The Reason Why Loving Did Best
+# Is Because They Had So Many Cases And Deaths That The Death Per Case Rate Was Low)
+
+counties_TX %>% arrange(cases_per_1000) # San Jacinto (Southeastern Texas)
+counties_TX %>% arrange(deaths_per_1000) # Shackelford, Chambers (Central North Texas)
+counties_TX %>% arrange(death_per_case) # Chambers (Southeastern Texas)
+filter(County_Vaccine_Information, us_county %in% c("San Jacinto County", "Chambers County"))
+
 # Adds Labels, Too Many!
 # geom_text_repel(data = counties_TX %>% filter(complete.cases(.)) %>% group_by(county) %>% 
 # summarize(long = mean(long), lat = mean(lat)) %>% mutate(county = str_to_title(county))) +
