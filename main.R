@@ -152,11 +152,11 @@ ggplot(counties_TX, aes(long, lat, label = county)) +
   labs(title = "COVID-19 Cases Per 1000 People", subtitle = "Only Counties Reporting 100+ Cases")
 
 # Worst Counties - Interestingly, The Counties With The Most Deaths Did Not Have Any Vaccine Sites (Unlisted)
-# North Texas Needs To Get Their Act Together!
+# Panhandle Needs To Get Their Act Together!
 
-counties_TX %>% arrange((desc(cases_per_1000))) # Childress, Hale (Both North Texas, Hale Is East Adjacent To Lamb)
-counties_TX %>% arrange((desc(deaths_per_1000))) # Lamb, Cottle (Both North Texas, Cottle Is South Adjacent To Childress)
-counties_TX %>% arrange((desc(death_per_case))) # Sherman, Garza (Both North Texas, Sherman Borders Oklahoma)
+counties_TX %>% arrange((desc(cases_per_1000))) # Childress, Hale (Both Panhandle, Hale Is East Adjacent To Lamb)
+counties_TX %>% arrange((desc(deaths_per_1000))) # Lamb, Cottle (Both Panhandle, Cottle Is South Adjacent To Childress)
+counties_TX %>% arrange((desc(death_per_case))) # Sherman, Garza (Both Panhandle, Sherman Borders Oklahoma)
 filter(County_Vaccine_Information, us_county %in% c("Childress County", "Hale County"))
 
 # Note: In Current Data, Worst Counties Are Loving (Cases, Deaths) McMullen, (Deaths), And Sabine (Deaths / Case)
@@ -168,7 +168,7 @@ filter(County_Vaccine_Information, us_county %in% c("Sabine County"))
 # Is Because They Had So Many Cases And Deaths That The Death Per Case Rate Was Low)
 
 counties_TX %>% arrange(cases_per_1000) # San Jacinto (Southeastern Texas)
-counties_TX %>% arrange(deaths_per_1000) # Shackelford, Chambers (Central North Texas)
+counties_TX %>% arrange(deaths_per_1000) # Shackelford, Chambers (Central Panhandle)
 counties_TX %>% arrange(death_per_case) # Chambers (Southeastern Texas)
 filter(County_Vaccine_Information, us_county %in% c("San Jacinto County", "Chambers County"))
 
@@ -221,5 +221,8 @@ mobilityLeftOuterJoinCensus <- mobilityLeftOuterJoinCensus[ , !names(mobilityLef
 plot_intro(mobilityLeftOuterJoinCensus)
 
 # select the attributes that are important
+
+
+# Ideas to plot relation to each other from joint dataset
 
 
