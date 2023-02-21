@@ -20,7 +20,7 @@ library(ggnewscale)
 # Read Data
 
 COVID_19_cases_plus_census <- read_csv("Datasets/COVID-19_cases_plus_census.csv")
-# COVID_19_cases_plus_census <- read_csv("Datasets/COVID-19_cases_plus_census_recent.csv") # Try This!
+COVID_19_cases_plus_census <- read_csv("Datasets/COVID-19_cases_plus_census_recent.csv") # Try This!
 COVID_19_cases_TX <- read_csv("Datasets/COVID-19_cases_TX_updated.csv")
 Global_Mobility_Report <- read_csv("Datasets/Global_Mobility_Report_current.csv", col_types =  cols(sub_region_2 = col_character()))
 County_Vaccine_Information <- read_csv("Datasets/County_Vaccine_Information.csv")
@@ -194,3 +194,32 @@ mobility_Dallas <- mobility %>% filter(sub_region_1 == "Texas" & sub_region_2 ==
 dim(mobility_Dallas)
 mobility_Dallas
 ggplot(mobility_Dallas, mapping = aes(x = date, y = retail_and_recreation_percent_change_from_baseline)) + geom_line() + geom_smooth()
+
+
+# Perform left outer join on Global Mobility Report
+# and COVID-19 Census data
+# specifically joining on the value of the census fips code
+Global_Mobility_ReportEdit <- Global_Mobility_Report %>% rename("county_fips_code" = "census_fips_code") # rename column so we can match them up
+Global_Mobility_ReportEdit <- Global_Mobility_ReportEdit %>% filter(!is.na(county_fips_code)) # remove non-US data
+ 
+# remove Puerto Rico data (these have census codes, but they weren't counted in the actual census data)
+Global_Mobility_ReportEdit <- subset(Global_Mobility_ReportEdit, Global_Mobility_ReportEdit$country_region_code != "PR")
+
+# Now this dataframe has only United States data (not including puerto rico)
+# Perform left outer join
+mobilityLeftOuterJoinCensus <- Global_Mobility_ReportEdit %>% left_join(COVID_19_cases_plus_census, by="county_fips_code")
+
+# initially, this giant dataframe included 11 columns full of NAs
+# Lets remove those columns entirely.
+mobilityLeftOuterJoinCensus <- mobilityLeftOuterJoinCensus[ , colSums(is.na(mobilityLeftOuterJoinCensus)) < nrow(mobilityLeftOuterJoinCensus)]
+
+# one of these columns with NAs is also just not needed at all
+# it corresponds very obviously to another column
+mobilityLeftOuterJoinCensus <- mobilityLeftOuterJoinCensus[ , !names(mobilityLeftOuterJoinCensus) %in% c("iso_3166_2_code")]
+
+# with cleaner data, we can try to plot things
+plot_intro(mobilityLeftOuterJoinCensus)
+
+# select the attributes that are important
+
+
