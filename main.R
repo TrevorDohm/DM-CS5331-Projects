@@ -205,24 +205,37 @@ Global_Mobility_ReportEdit <- Global_Mobility_ReportEdit %>% filter(!is.na(count
 # remove Puerto Rico data (these have census codes, but they weren't counted in the actual census data)
 Global_Mobility_ReportEdit <- subset(Global_Mobility_ReportEdit, Global_Mobility_ReportEdit$country_region_code != "PR")
 
-# Now this dataframe has only United States data (not including puerto rico)
-# Perform left outer join
-mobilityLeftOuterJoinCensus <- Global_Mobility_ReportEdit %>% left_join(COVID_19_cases_plus_census, by="county_fips_code")
-
-# initially, this giant dataframe included 11 columns full of NAs
+# initially, this dataframe included some columns full of NAs
 # Lets remove those columns entirely.
-mobilityLeftOuterJoinCensus <- mobilityLeftOuterJoinCensus[ , colSums(is.na(mobilityLeftOuterJoinCensus)) < nrow(mobilityLeftOuterJoinCensus)]
+Global_Mobility_ReportEdit <- Global_Mobility_ReportEdit[ , colSums(is.na(Global_Mobility_ReportEdit)) < nrow(Global_Mobility_ReportEdit)]
 
 # one of these columns with NAs is also just not needed at all
 # it corresponds very obviously to another column
-mobilityLeftOuterJoinCensus <- mobilityLeftOuterJoinCensus[ , !names(mobilityLeftOuterJoinCensus) %in% c("iso_3166_2_code")]
+Global_Mobility_ReportEdit <- Global_Mobility_ReportEdit[ , !names(Global_Mobility_ReportEdit) %in% c("iso_3166_2_code")]
+
+
+# Now this dataframe has only United States data (not including puerto rico)
+# lets select columns of interest from the Census data
+columnsOfInterest <- COVID_19_cases_plus_census %>% select(county_fips_code, confirmed_cases, deaths, total_pop)
+
+# Perform left outer join
+casesAndDeathsVSColumnsOfInterest <- Global_Mobility_ReportEdit %>% left_join(columnsOfInterest, by="county_fips_code")
 
 # with cleaner data, we can try to plot things
-plot_intro(mobilityLeftOuterJoinCensus)
+plot_intro(casesAndDeathsVSColumnsOfInterest)
 
-# select the attributes that are important
+# remove non-numeric columns
+transform_census2 <- casesAndDeathsVSColumnsOfInterest %>% select(!c(country_region_code, country_region, sub_region_1, sub_region_2, place_id, date, county_fips_code))
 
+# What variables are correlated? This is cases/deaths x mobility data
+# Expected Results (Check Uncorrelated)
 
-# Ideas to plot relation to each other from joint dataset
+transform_census2 <- as.data.frame(sapply(transform_census2, as.numeric))
+cor_census2 <- cor(transform_census2, use = "na.or.complete")
+high_cor2 <- findCorrelation(cor_census2, cutoff = 0.99995)
+colnames(transform_census2)
+
+cor_Mobility_and_Census <- cor(transform_census2, use = "na.or.complete")
+ggcorrplot(cor_Mobility_and_Census, p.mat = cor_pmat(transform_census2), type = "upper", title = "Correlation Matrix for US COVID-19 Cases and Deaths and US Mobility Statistics",insig = "blank", hc.order = TRUE, lab = TRUE ,colors = c("blue", "white", "orange"))
 
 
