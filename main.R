@@ -196,8 +196,7 @@ mobility_Dallas
 ggplot(mobility_Dallas, mapping = aes(x = date, y = retail_and_recreation_percent_change_from_baseline)) + geom_line() + geom_smooth()
 
 
-# Perform left outer join on Global Mobility Report
-# and COVID-19 Census data
+# Perform left outer join on Global Mobility Report and COVID-19 Census data
 # specifically joining on the value of the census fips code
 Global_Mobility_ReportEdit <- Global_Mobility_Report %>% rename("county_fips_code" = "census_fips_code") # rename column so we can match them up
 Global_Mobility_ReportEdit <- Global_Mobility_ReportEdit %>% filter(!is.na(county_fips_code)) # remove non-US data
@@ -216,7 +215,7 @@ Global_Mobility_ReportEdit <- Global_Mobility_ReportEdit[ , !names(Global_Mobili
 
 # Now this dataframe has only United States data (not including puerto rico)
 # lets select columns of interest from the Census data
-columnsOfInterest <- COVID_19_cases_plus_census %>% select(county_fips_code, confirmed_cases, deaths, total_pop)
+columnsOfInterest <- COVID_19_cases_plus_census %>% select(county_fips_code, confirmed_cases, deaths)
 
 # Perform left outer join
 casesAndDeathsVSColumnsOfInterest <- Global_Mobility_ReportEdit %>% left_join(columnsOfInterest, by="county_fips_code")
