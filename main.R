@@ -11,7 +11,8 @@ library(caret)
 library(mlbench)
 library(maps)
 library(DataExplorer)
-library(ggnewscale) 
+library(ggnewscale)
+library(reshape2)
 
 # Note: COVID_19_cases_TX Has Incrementing Data
 # Run With Updated Census Data, Interesting Results
@@ -236,5 +237,74 @@ colnames(transform_census2)
 
 cor_Mobility_and_Census <- cor(transform_census2, use = "na.or.complete")
 ggcorrplot(cor_Mobility_and_Census, p.mat = cor_pmat(transform_census2), type = "upper", title = "Correlation Matrix for US COVID-19 Cases and Deaths and US Mobility Statistics",insig = "blank", hc.order = TRUE, lab = TRUE ,colors = c("blue", "white", "orange"))
+
+
+# Lets also explore the correlation between deaths and ethnicities
+# Lets select columns of interest from the Census data
+casesAndDeathsVSColumnsOfInterest <- COVID_19_cases_plus_census %>% select(confirmed_cases, deaths, white_pop, black_pop, asian_pop, hispanic_pop, amerindian_pop, other_race_pop, two_or_more_races_pop)
+
+# with cleaner data, we can try to plot things
+plot_intro(casesAndDeathsVSColumnsOfInterest)
+
+# What variables are correlated? This is cases/deaths x mobility data
+# Expected Results (Check Uncorrelated)
+
+transform_census3 <- as.data.frame(sapply(casesAndDeathsVSColumnsOfInterest, as.numeric))
+cor_census3 <- cor(transform_census3, use = "na.or.complete")
+high_cor3 <- findCorrelation(cor_census3, cutoff = 0.99995)
+colnames(transform_census3)
+
+cor_Deaths_and_Census_Ethnicity <- cor(transform_census3, use = "na.or.complete")
+ggcorrplot(cor_Deaths_and_Census_Ethnicity, p.mat = cor_pmat(transform_census3), type = "full", title = "Correlation Matrix for US COVID-19 Cases and Deaths and Race/Ethnicity Statistics",insig = "blank", hc.order = TRUE, lab = TRUE ,colors = c("blue", "white", "orange"))
+
+
+# Plot each ethnicity vs. deaths
+# Lets select columns of interest from the Census data
+casesAndDeathsVSColumnsOfInterest <- COVID_19_cases_plus_census %>% select(confirmed_cases, deaths, white_pop, black_pop, asian_pop, hispanic_pop, amerindian_pop, other_race_pop, two_or_more_races_pop)
+casesAndDeathsVSColumnsOfInterest <- data.frame(casesAndDeathsVSColumnsOfInterest)
+ggplot(data=data.frame(casesAndDeathsVSColumnsOfInterest), mapping = aes(x = hispanic_pop , y = deaths)) + 
+  geom_point(aes(color = "red")) +
+  geom_smooth() +
+  labs(title = "Plot Displaying Deaths vs. Hispanic Population in each US county", x = "hispanic_pop", y = "deaths") +
+  theme_bw()
+
+ggplot(data=data.frame(casesAndDeathsVSColumnsOfInterest), mapping = aes(x = white_pop , y = deaths)) + 
+  geom_point(aes(color = "red")) +
+  geom_smooth() +
+  labs(title = "Plot Displaying Deaths vs. White Population in each US county", x = "white_pop", y = "deaths") +
+  theme_bw()
+
+ggplot(data=data.frame(casesAndDeathsVSColumnsOfInterest), mapping = aes(x = black_pop , y = deaths)) + 
+  geom_point(aes(color = "red")) +
+  geom_smooth() +
+  labs(title = "Plot Displaying Deaths vs. Black Population in each US county", x = "black_pop", y = "deaths") +
+  theme_bw()
+
+ggplot(data=data.frame(casesAndDeathsVSColumnsOfInterest), mapping = aes(x = asian_pop , y = deaths)) + 
+  geom_point(aes(color = "red")) +
+  geom_smooth() +
+  labs(title = "Plot Displaying Deaths vs. Asian Population in each US county", x = "asian_pop", y = "deaths") +
+  theme_bw()
+
+ggplot(data=data.frame(casesAndDeathsVSColumnsOfInterest), mapping = aes(x = amerindian_pop , y = deaths)) + 
+  geom_point(aes(color = "red")) +
+  geom_smooth() +
+  labs(title = "Plot Displaying Deaths vs. Amerindian Population in each US county", x = "amerindian_pop", y = "deaths") +
+  theme_bw()
+
+# Trying to plot them all on the same plot:
+# https://stackoverflow.com/questions/9531904/plot-multiple-columns-on-the-same-graph-in-r
+casesAndDeathsVSColumnsOfInterest %>% tidyr::gather("population", "deaths", 3:9) %>% 
+  ggplot(., aes(population, deaths))+
+  geom_point()+
+  geom_smooth(method = "lm", se=FALSE, color="black")+
+  facet_wrap(~population)
+
+
+# Another Attempt
+# https://www.statology.org/plot-multiple-columns-in-r/
+df <- melt(casesAndDeathsVSColumnsOfInterest, id.vars = 'deaths', variable.name = 'series')
+
+
 
 
