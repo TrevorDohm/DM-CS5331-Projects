@@ -305,6 +305,9 @@ casesAndDeathsVSColumnsOfInterest %>% tidyr::gather("population", "deaths", 3:9)
 # https://www.statology.org/plot-multiple-columns-in-r/
 df <- melt(casesAndDeathsVSColumnsOfInterest, id.vars = 'deaths', variable.name = 'series')
 
+#create line plot for each column in data frame
+ggplot(df, aes(deaths, value)) +
+  geom_line(aes(colour = series))
 
 
 
