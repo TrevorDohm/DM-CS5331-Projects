@@ -95,13 +95,12 @@ colnames(transform_census)
 control <- trainControl(method = "repeatedcv", number = 10, repeats = 3)
 model <- train(confirmed_cases~., data = transform_census, method = "lm", preProcess = "scale", trControl = control)
 importance <- varImp(model, scale = FALSE)
-print(importance)
+print(importance, top = 20)
+plot(importance, top = 20)
 
-
-
-# Plot Above (Computationally Intensive)
-# ggcorrplot(cor_census, p.mat = cor_pmat(transform_census[,-1]), insig = "blank", hc.order = TRUE)
-# plot(importance)
+cor_census_new <- transform_census[c('deaths', 'income_less_10000', 'income_10000_14999', 
+                                     'income_50000_59999', 'income_150000_199999')]
+plot_correlation(cor_census_new, title = 'Correlation Among Important Census Data')
 
 # Are There Many Counties With Cases?
 # Many Counties (Unpopulated) With Low Cases; Few (Dallas, Austin, Houston) With Many Cases
@@ -387,12 +386,15 @@ ggplot(df, aes(deaths, value)) +
   geom_point(aes(colour = populations)) +
   labs(title="Each US county's population vs. their deaths", y="Population", subtitle = "Filtered by Race/Ethnicity")
 
-# Lets also find the ethnicity vs deaths but only in Texas
+# Ethnicity Vs Deaths (Texas)
 COVID_cases_plus_census_TX <- subset(COVID_19_cases_plus_census, state == "TX")
 COVID_cases_plus_census_TX <- COVID_cases_plus_census_TX %>% select(deaths, white_pop, black_pop, asian_pop, hispanic_pop, amerindian_pop, other_race_pop, two_or_more_races_pop)
 COVID_cases_plus_census_TX <- data.frame(COVID_cases_plus_census_TX)
 
-# Lets graph per ethnicity
+
+
+# Graph By Ethnicity
+
 ggplot(data=data.frame(COVID_cases_plus_census_TX), mapping = aes(x = hispanic_pop , y = deaths)) + 
   geom_point(aes(color = "red")) +
   geom_smooth() +
@@ -424,12 +426,13 @@ ggplot(data=data.frame(COVID_cases_plus_census_TX), mapping = aes(x = amerindian
   labs(title = "Plot Displaying Deaths vs. Amerindian Population in each TX county", x = "amerindian_pop", y = "deaths") +
   theme_bw()
 
-# Trying to plot them all on the same plot:
+# Plot All On Same Plot
 # https://www.statology.org/plot-multiple-columns-in-r/
 df <- melt(COVID_cases_plus_census_TX, id.vars = 'deaths', variable.name = 'populations')
 
-#create line plot for each column in data frame
+# Create Line Plot For Each Column
 ggplot(df, aes(deaths, value)) +
   geom_point(aes(colour = populations)) +
   labs(title="Each TX county's population vs. their deaths", y="Population", subtitle = "Filtered by Race/Ethnicity")
+
 
