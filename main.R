@@ -307,7 +307,7 @@ columnsOfInterest <- COVID_19_cases_plus_census %>% select(county_fips_code, con
 casesAndDeathsVSColumnsOfInterest <- Global_Mobility_ReportEdit %>% left_join(columnsOfInterest, by="county_fips_code")
 
 # Plot With Cleaner Data
-plot_intro(casesAndDeathsVSColumnsOfInterest)
+plot_intro(casesAndDeathsVSColumnsOfInterest, title = "Intro Plot for US Cases/Deaths and US Mobility Statistics")
 
 # Remove Non-Numeric Columns
 transform_census2 <- casesAndDeathsVSColumnsOfInterest %>% select(!c(country_region_code, country_region, sub_region_1, sub_region_2, place_id, date, county_fips_code))
@@ -319,13 +319,13 @@ high_cor2 <- findCorrelation(cor_census2, cutoff = 0.99995)
 colnames(transform_census2)
 
 cor_Mobility_and_Census <- cor(transform_census2, use = "na.or.complete")
-ggcorrplot(cor_Mobility_and_Census, p.mat = cor_pmat(transform_census2), type = "upper", title = "Correlation Matrix for US COVID-19 Cases and Deaths and US Mobility Statistics",insig = "blank", hc.order = TRUE, lab = TRUE ,colors = c("blue", "white", "orange"))
+ggcorrplot(cor_Mobility_and_Census, p.mat = cor_pmat(transform_census2), type = "upper", title = "Correlation Matrix for US COVID-19 Cases/Deaths and US Mobility Statistics",insig = "blank", hc.order = TRUE, lab = TRUE ,colors = c("blue", "white", "orange"))
 
 # Explore Correlation Between Deaths, Ethnicities
 casesAndDeathsVSColumnsOfInterest <- COVID_19_cases_plus_census %>% select(confirmed_cases, deaths, white_pop, black_pop, asian_pop, hispanic_pop, amerindian_pop, other_race_pop, two_or_more_races_pop)
 
 # Plot With Cleaner Data
-plot_intro(casesAndDeathsVSColumnsOfInterest)
+plot_intro(casesAndDeathsVSColumnsOfInterest, title = "Intro Plot for US Cases/Deaths and US Ethnicity Statistics")
 
 # Find Correlated Variables (Cases / Deaths X Mobility Data)
 transform_census3 <- as.data.frame(sapply(casesAndDeathsVSColumnsOfInterest, as.numeric))
