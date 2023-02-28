@@ -145,6 +145,7 @@ counties <- as_tibble(map_data("county"))
 counties_TX <- counties %>% dplyr::filter(region == "texas") %>% rename("county" = "subregion")
 cases_TX <- cases_TX_select %>% mutate(county = county_name %>% str_to_lower() %>% str_replace('\\s+county\\s*$', ''))
 counties_TX <- counties_TX %>% left_join(cases_TX %>% select(c(county, cases_per_1000, deaths_per_1000, death_per_case)))
+counties_TX[counties_TX$county == 'loving', 'cases_per_1000'] <- NA
 
 ggplot(counties_TX, aes(long, lat, label = county)) + 
   geom_polygon(aes(group = group, fill = cases_per_1000)) +
