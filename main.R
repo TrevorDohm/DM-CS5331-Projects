@@ -387,4 +387,49 @@ ggplot(df, aes(deaths, value)) +
   geom_point(aes(colour = populations)) +
   labs(title="Each US county's population vs. their deaths", y="Population", subtitle = "Filtered by Race/Ethnicity")
 
+# Lets also find the ethnicity vs deaths but only in Texas
+COVID_cases_plus_census_TX <- subset(COVID_19_cases_plus_census, state == "TX")
+COVID_cases_plus_census_TX <- COVID_cases_plus_census_TX %>% select(deaths, white_pop, black_pop, asian_pop, hispanic_pop, amerindian_pop, other_race_pop, two_or_more_races_pop)
+COVID_cases_plus_census_TX <- data.frame(COVID_cases_plus_census_TX)
+
+# Lets graph per ethnicity
+ggplot(data=data.frame(COVID_cases_plus_census_TX), mapping = aes(x = hispanic_pop , y = deaths)) + 
+  geom_point(aes(color = "red")) +
+  geom_smooth() +
+  labs(title = "Plot Displaying Deaths vs. Hispanic Population in each TX county", x = "hispanic_pop", y = "deaths") +
+  theme_bw()
+
+ggplot(data=data.frame(COVID_cases_plus_census_TX), mapping = aes(x = white_pop , y = deaths)) + 
+  geom_point(aes(color = "red")) +
+  geom_smooth() +
+  labs(title = "Plot Displaying Deaths vs. White Population in each TX county", x = "white_pop", y = "deaths") +
+  theme_bw()
+
+ggplot(data=data.frame(COVID_cases_plus_census_TX), mapping = aes(x = black_pop , y = deaths)) + 
+  geom_point(aes(color = "red")) +
+  geom_smooth() +
+  labs(title = "Plot Displaying Deaths vs. Black Population in each TX county", x = "black_pop", y = "deaths") +
+  theme_bw()
+
+ggplot(data=data.frame(COVID_cases_plus_census_TX), mapping = aes(x = asian_pop , y = deaths)) + 
+  geom_point(aes(color = "red")) +
+  geom_smooth() +
+  ylim(0, 40000) +
+  labs(title = "Plot Displaying Deaths vs. Asian Population in each TX county", x = "asian_pop", y = "deaths") +
+  theme_bw()
+
+ggplot(data=data.frame(COVID_cases_plus_census_TX), mapping = aes(x = amerindian_pop , y = deaths)) + 
+  geom_point(aes(color = "red")) +
+  geom_smooth() +
+  labs(title = "Plot Displaying Deaths vs. Amerindian Population in each TX county", x = "amerindian_pop", y = "deaths") +
+  theme_bw()
+
+# Trying to plot them all on the same plot:
+# https://www.statology.org/plot-multiple-columns-in-r/
+df <- melt(COVID_cases_plus_census_TX, id.vars = 'deaths', variable.name = 'populations')
+
+#create line plot for each column in data frame
+ggplot(df, aes(deaths, value)) +
+  geom_point(aes(colour = populations)) +
+  labs(title="Each TX county's population vs. their deaths", y="Population", subtitle = "Filtered by Race/Ethnicity")
 
