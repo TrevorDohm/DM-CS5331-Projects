@@ -101,6 +101,14 @@ plot(importance, top = 20)
 cor_census_new <- transform_census[c('deaths', 'income_less_10000', 'income_10000_14999', 
                                      'income_50000_59999', 'income_150000_199999')]
 plot_correlation(cor_census_new, title = 'Correlation Among Important Census Data')
+cor_census_new <- transform_census[c('deaths', 'black_pop', 'income_10000_14999', 'black_including_hispanic', 
+                                     'different_house_year_ago_same_city', 'commuters_by_car_truck_van',
+                                     'hispanic_male_45_54', 'white_including_hispanic', 'hispanic_pop',
+                                     'million_dollar_housing_units', 'walked_to_work', 'income_50000_59999',
+                                     'income_150000_199999', 'in_grades_9_to_12', 'white_pop',
+                                     'management_business_sci_arts_employed', 'rent_35_to_40_percent',
+                                     'male_45_64_high_school', 'income_less_10000', 'commuters_by_public_transportation')]
+summary(cor_census_new)
 
 # Are There Many Counties With Cases?
 # Many Counties (Unpopulated) With Low Cases; Few (Dallas, Austin, Houston) With Many Cases
