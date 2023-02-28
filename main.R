@@ -335,7 +335,7 @@ high_cor3 <- findCorrelation(cor_census3, cutoff = 0.99995)
 colnames(transform_census3)
 
 cor_Deaths_and_Census_Ethnicity <- cor(transform_census3, use = "na.or.complete")
-ggcorrplot(cor_Deaths_and_Census_Ethnicity, p.mat = cor_pmat(transform_census3), type = "full", title = "Correlation Matrix for US COVID-19 Cases and Deaths and Race/Ethnicity Statistics",insig = "blank", hc.order = TRUE, lab = TRUE ,colors = c("blue", "white", "orange"))
+ggcorrplot(cor_Deaths_and_Census_Ethnicity, p.mat = cor_pmat(transform_census3), type = "full", title = "Correlation Matrix for US COVID-19 Cases/Deaths and Ethnicity Statistics",insig = "blank", hc.order = TRUE, lab = TRUE ,colors = c("blue", "white", "orange"))
 
 
 
