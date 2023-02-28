@@ -378,17 +378,6 @@ casesAndDeathsVSColumnsOfInterest <- subset(casesAndDeathsVSColumnsOfInterest, s
 
 
 # Plotting On Same Plot:
-# https://stackoverflow.com/questions/9531904/plot-multiple-columns-on-the-same-graph-in-r
-
-casesAndDeathsVSColumnsOfInterest %>% tidyr::gather("population", "deaths", 3:8) %>% 
-  ggplot(., aes(value, deaths))+
-  geom_point()+
-  geom_smooth(method = "lm", se=FALSE, color="black")+
-  facet_wrap(~population)
-
-
-
-# Another Attempt:
 # https://www.statology.org/plot-multiple-columns-in-r/
 
 df <- melt(casesAndDeathsVSColumnsOfInterest, id.vars = 'deaths', variable.name = 'populations')
