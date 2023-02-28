@@ -292,10 +292,12 @@ ggplot(data=data.frame(casesAndDeathsVSColumnsOfInterest), mapping = aes(x = ame
   labs(title = "Plot Displaying Deaths vs. Amerindian Population in each US county", x = "amerindian_pop", y = "deaths") +
   theme_bw()
 
+casesAndDeathsVSColumnsOfInterest <- subset(casesAndDeathsVSColumnsOfInterest, select=-c(confirmed_cases))
+
 # Trying to plot them all on the same plot:
 # https://stackoverflow.com/questions/9531904/plot-multiple-columns-on-the-same-graph-in-r
-casesAndDeathsVSColumnsOfInterest %>% tidyr::gather("population", "deaths", 3:9) %>% 
-  ggplot(., aes(population, deaths))+
+casesAndDeathsVSColumnsOfInterest %>% tidyr::gather("population", "deaths", 3:8) %>% 
+  ggplot(., aes(value, deaths))+
   geom_point()+
   geom_smooth(method = "lm", se=FALSE, color="black")+
   facet_wrap(~population)
@@ -303,11 +305,12 @@ casesAndDeathsVSColumnsOfInterest %>% tidyr::gather("population", "deaths", 3:9)
 
 # Another Attempt
 # https://www.statology.org/plot-multiple-columns-in-r/
-df <- melt(casesAndDeathsVSColumnsOfInterest, id.vars = 'deaths', variable.name = 'series')
+df <- melt(casesAndDeathsVSColumnsOfInterest, id.vars = 'deaths', variable.name = 'populations')
 
 #create line plot for each column in data frame
 ggplot(df, aes(deaths, value)) +
-  geom_line(aes(colour = series))
+  geom_point(aes(colour = populations)) +
+  labs(title="Each US county's population vs. their deaths", y="Population", subtitle = "Filtered by Race/Ethnicity")
 
 
 
