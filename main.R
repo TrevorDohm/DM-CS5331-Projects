@@ -110,7 +110,9 @@ cor_census_new <- transform_census[c('deaths', 'black_pop', 'income_10000_14999'
                                      'management_business_sci_arts_employed', 'rent_35_to_40_percent',
                                      'male_45_64_high_school', 'income_less_10000', 'commuters_by_public_transportation')]
 summary(cor_census_new)
-stat.desc(cor_census_new)
+options(scipen = 100)
+options(digits = 3)
+stat.desc(cor_census_new, basic = F)
 
 # Are There Many Counties With Cases?
 # Many Counties (Unpopulated) With Low Cases; Few (Dallas, Austin, Houston) With Many Cases
