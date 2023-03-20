@@ -80,6 +80,83 @@ summary(cases_TX[, 1:10])
 
 
 
+# Project Two: Cluster Analysis
+
+# Calculate Rates, Select Important Variable
+# You Need More Variables
+cases_TX <- cases_TX %>% 
+  filter(confirmed_cases > 100) %>% 
+  arrange(desc(confirmed_cases)) %>%    
+  select(county_name, confirmed_cases, deaths, total_pop, median_income, median_age, poverty, commuters_by_public_transportation)
+cases_TX <- cases_TX %>% mutate(
+  cases_per_1000 = confirmed_cases/total_pop*1000, 
+  deaths_per_1000 = deaths/total_pop*1000, 
+  death_per_case = deaths/confirmed_cases)
+summary(cases_TX)
+
+# Visualize Some Data Using Map
+datatable(cases_TX) %>% formatRound(c(5, 9, 10), 2) %>% formatPercentage(11, 2)
+counties <- as_tibble(map_data("county"))
+counties_TX <- counties %>% dplyr::filter(region == "texas") %>% 
+  rename("county" = "subregion")
+
+# Make County Name Match Map County Names
+cases_TX <- cases_TX %>% mutate(county = county_name %>% 
+                                  str_to_lower() %>% str_replace('\\s+county\\s*$', ''))
+counties_TX_clust <- counties_TX %>% left_join(cases_TX)
+ggplot(counties_TX_clust, aes(long, lat)) + 
+  geom_polygon(aes(group = group, fill = deaths_per_1000)) +
+  coord_quickmap() +
+  scale_fill_continuous(type = "viridis") +
+  labs(title = "Clusters", subtitle = "Only counties reporting 100+ cases")
+
+# Cluster cases_TX With k-means
+cases_TX_scaled <- cases_TX %>% 
+  select(
+    median_income,
+    median_age, 
+    # total_pop, # you should use density
+    poverty, 
+    commuters_by_public_transportation
+  ) %>% 
+  scale() %>% as_tibble()
+summary(cases_TX_scaled)
+
+# Perform k-means
+km <- kmeans(cases_TX_scaled, centers = 4)
+km
+
+# Look At Cluster Profiles
+ggplot(pivot_longer(as_tibble(km$centers,  rownames = "cluster"), 
+  cols = colnames(km$centers)), 
+  aes(y = name, x = value)) +
+  geom_bar(stat = "identity") +
+  facet_grid(rows = vars(cluster))
+
+# Counties For Map
+counties <- as_tibble(map_data("county"))
+counties_TX <- counties %>% dplyr::filter(region == "texas") %>% 
+  rename(c(county = subregion))
+cases_TX <- cases_TX %>% mutate(county = county_name %>% 
+                                  str_to_lower() %>% str_replace('\\s+county\\s*$', ''))
+
+# Make County Name Match Map County Names
+counties_TX_clust <- counties_TX %>% left_join(cases_TX %>% add_column(cluster = factor(km$cluster)))
+ggplot(counties_TX_clust, aes(long, lat)) + 
+  geom_polygon(aes(group = group, fill = cluster)) +
+  coord_quickmap() + 
+  scale_fill_viridis_d() + 
+  labs(title = "Clusters", subtitle = "Only counties reporting 100+ cases")
+
+# Note: Think About Outliers, Appropriate #Clusters, What Clusters Mean For Decision Maker
+# Check If Cases / Deaths By 1000 People Are Different In Different Clusters:
+cases_TX_km <- cases_TX %>% add_column(cluster = factor(km$cluster))
+cases_TX_km %>% group_by(cluster) %>% summarize(
+  avg_cases = mean(cases_per_1000), 
+  avg_deaths = mean(deaths_per_1000))
+
+
+
 # Feature Ranking (After Factorizing)
 # Note: First Transform - Curse Of Dimensionality Example
 
