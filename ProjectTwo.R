@@ -14,6 +14,8 @@ library(DataExplorer)
 library(ggnewscale)
 library(reshape2)
 library(pastecs)
+library(dbscan)
+library(cluster)
 
 # Note: COVID_19_cases_TX Has Incrementing Data
 # Run With Updated Census Data, Interesting Results
@@ -154,6 +156,37 @@ cases_TX_km <- cases_TX %>% add_column(cluster = factor(km$cluster))
 cases_TX_km %>% group_by(cluster) %>% summarize(
   avg_cases = mean(cases_per_1000), 
   avg_deaths = mean(deaths_per_1000))
+
+z <- cases_TX_scaled[,-c(1,1)]
+means <- apply(z,2,mean)
+sds <- apply(z,2,sd)
+nor <- scale(z,center=means,scale=sds)
+distance = dist(nor)
+cases_TX_scaled.hclust = hclust(distance)
+plot(cases_TX_scaled.hclust)
+plot(cases_TX_scaled.hclust,labels=cases_TX_scaled$Company,main='Default from hclust')
+plot(cases_TX_scaled.hclust,hang=-1, labels=cases_TX_scaled$Company,main='Default from hclust')
+
+# Ward Hierarchical Clustering
+d <- dist(cases_TX_scaled, method = "euclidean") # distance matrix
+fit <- hclust(d, method="ward")
+plot(fit) # display dendogram
+groups <- cutree(fit, k=5) # cut tree into 5 clusters
+# draw dendogram with red borders around the 5 clusters
+rect.hclust(fit, k=5, border="red")
+
+db <- dbscan(cases_TX_scaled, eps = 0.4, minPts = 4)
+db
+pairs(cases_TX_scaled, col = db$cluster + 1L)
+
+opt <- optics(cases_TX_scaled, eps = 1, minPts = 4)
+opt
+opt <- extractDBSCAN(opt, eps_cl = 0.4)
+plot(opt)
+
+hdb <- hdbscan(cases_TX_scaled, minPts = 4)
+hdb
+plot(hdb, show_flat = TRUE)
 
 
 
