@@ -36,9 +36,10 @@ County_Vaccine_Information <- read_csv("Datasets/County_Vaccine_Information.csv"
 # Data Explorer Code
 # Explain These Data
 
-plot_intro(COVID_19_cases_plus_census)
-plot_intro(COVID_19_cases_TX)
-plot_intro(Global_Mobility_Report)
+plot_intro(COVID_19_cases_plus_census, title="Intro Plot for U.S. Covid-19 Cases and Census Dataset")
+plot_intro(COVID_19_cases_TX, title="Intro Plot for Texas Covid-19 Cases Dataset")
+plot_intro(Global_Mobility_Report, title="Intro Plot for Global Mobility Report Dataset")
+plot_intro(County_Vaccine_Information, title="Intro Plot for Texas County Vaccine Sites Dataset")
 plot_correlation(COVID_19_cases_TX)
 
 
