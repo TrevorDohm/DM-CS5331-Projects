@@ -207,16 +207,16 @@ plot(hdb, show_flat = TRUE)
 
 # Housing
 
-cases_TX <- COVID_19_cases_plus_census %>% filter(state == "TX")
-cases_TX <- cases_TX %>% 
+housingTX <- COVID_19_cases_plus_census %>% filter(state == "TX")
+housingTX <- housingTX %>% 
   filter(confirmed_cases > 100) %>% 
   arrange(desc(confirmed_cases)) %>%    
   select(county_name, housing_units, housing_built_2005_or_later, housing_built_2000_to_2004, housing_built_1939_or_earlier)
-pairs(cases_TX[2:5])
-plot(cases_TX$housing_built_1939_or_earlier~ cases_TX$housing_units, data = cases_TX)
+pairs(housingTX[2:5])
+plot(housingTX$housing_built_1939_or_earlier~ housingTX$housing_units, data = housingTX)
 
 # Cluster cases_TX With K-means for years that housing was built
-cases_TX_scaled <- cases_TX %>% 
+scaledHousingTX <- housingTX %>% 
   select(
     housing_built_1939_or_earlier,
     housing_built_2000_to_2004,
@@ -224,15 +224,16 @@ cases_TX_scaled <- cases_TX %>%
     housing_units
   ) %>% 
   scale() %>% as_tibble()
-summary(cases_TX_scaled)
+summary(scaledHousingTX)
 
 # Perform k-means
-km <- kmeans(cases_TX_scaled, centers = 4)
+km <- kmeans(scaledHousingTX, centers = 4)
 km
-pairs(cases_TX_scaled, col = km$cluster + 1L)
+pairs(scaledHousingTX, col = km$cluster + 1L)
 
 # Make County Name Match Map County Names
-counties_TX_clust <- counties_TX %>% left_join(cases_TX %>% add_column(cluster = factor(km$cluster)))
+housingTX <- housingTX %>% mutate(county = county_name %>% str_to_lower() %>% str_replace('\\s+county\\s*$', ''))
+counties_TX_clust <- counties_TX %>% left_join(housingTX %>% add_column(cluster = factor(km$cluster)))
 ggplot(counties_TX_clust, aes(long, lat)) + 
   geom_polygon(aes(group = group, fill = cluster)) +
   coord_quickmap() + 
