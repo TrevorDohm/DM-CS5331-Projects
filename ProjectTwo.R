@@ -80,11 +80,6 @@ hc <- hclust(d, method = "complete")
 fviz_dend(hc, k = 4)
 fviz_cluster(list(data = scaledVaccineTX, cluster = cutree(hc, k = 4)), geom = "point")
 
-counties_TX_clust <- counties_TX %>% left_join(vaccineTX %>% add_column(cluster = factor(db$cluster)))
-ggplot(counties_TX_clust, aes(long, lat)) + 
-  geom_polygon(aes(group = group, fill = cluster)) +
-  coord_quickmap() + 
-  labs(title = "Clusters - Vaccine Site Data", subtitle = "Note Greyed Out Counties Are Non-Reporting")
 
 
 # Project Two: Cluster Analysis
@@ -146,12 +141,6 @@ ggplot(pivot_longer(as_tibble(km$centers, rownames = "cluster"),
   geom_bar(stat = "identity") +
   facet_grid(rows = vars(cluster))
 
-# Counties For Map
-counties <- as_tibble(map_data("county"))
-counties_TX <- counties %>% dplyr::filter(region == "texas") %>% 
-  rename(c(county = subregion))
-cases_TX <- cases_TX %>% mutate(county = county_name %>% 
-                                  str_to_lower() %>% str_replace('\\s+county\\s*$', ''))
 
 # Make County Name Match Map County Names
 counties_TX_clust <- counties_TX %>% left_join(cases_TX %>% add_column(cluster = factor(km$cluster)))
@@ -174,7 +163,7 @@ plot(hc)
 fviz_dend(hc, k = 4)
 
 clusters <- cutree(hc, k = 4)
-cluster_complete <- ruspini_scaled %>%
+cluster_complete <- cases_TX_scaled %>%
   add_column(cluster = factor(clusters))
 cluster_complete
 
@@ -201,7 +190,7 @@ pairs(iris, col = cl$cluster + 1L)
 
 # Look At Cluster Profiles
 ggplot(pivot_longer(as_tibble(km$centers, rownames = "cluster"), 
-  cols = colnames(db$centers)), 
+  cols = colnames(km$centers)), 
   aes(y = name, x = value)) +
   geom_bar(stat = "identity") +
   facet_grid(rows = vars(cluster))
@@ -215,6 +204,8 @@ hdb <- hdbscan(cases_TX_scaled, minPts = 4)
 hdb
 plot(hdb, show_flat = TRUE)
 
+
+# Housing
 
 cases_TX <- COVID_19_cases_plus_census %>% filter(state == "TX")
 cases_TX <- cases_TX %>% 
@@ -254,7 +245,4 @@ ggplot(counties_TX_clust, aes(long, lat)) +
 # Explain These Data
 
 plot_intro(COVID_19_cases_plus_census, title="Intro Plot for U.S. Covid-19 Cases and Census Dataset")
-plot_intro(COVID_19_cases_TX, title="Intro Plot for Texas Covid-19 Cases Dataset")
-plot_intro(Global_Mobility_Report, title="Intro Plot for Global Mobility Report Dataset")
 plot_intro(County_Vaccine_Information, title="Intro Plot for Texas County Vaccine Sites Dataset")
-plot_correlation(COVID_19_cases_TX)
