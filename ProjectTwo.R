@@ -1,5 +1,4 @@
 # Imports
-
 library(tidyverse)
 library(ggplot2)
 library(ggrepel)
@@ -19,33 +18,82 @@ library(cluster)
 library(FactoMineR)
 library(factoextra)
 
-# Note: COVID_19_cases_TX Has Incrementing Data
-# Run With Updated Census Data, Interesting Results
-# Do Not Need To Run With Old TX Data; Incorporated (Same With GMR)
-
-
-
 # Read Data
-
 COVID_19_cases_plus_census <- read_csv("Datasets/COVID-19_cases_plus_census_recent.csv")
 County_Vaccine_Information <- read_csv("Datasets/County_Vaccine_Information.csv")
 
+# Obtain County Names
+counties <- as_tibble(map_data("county"))
+counties_TX <- counties %>% dplyr::filter(region == "texas") %>% rename("county" = "subregion")
 
 
-# Make Character Factors, Filter TX
 
-cases <- COVID_19_cases_plus_census %>% mutate_if(is.character, factor)
-dim(cases)
-cases_TX <- COVID_19_cases_plus_census %>% filter(state == "TX")
-dim(cases_TX)
-summary(cases_TX[, 1:10])
 
+# Vaccine Information Clustering
+
+# Note Data Already Sorted In Ascending Order (sites_per_1k_ppl)
+vaccineTX <- County_Vaccine_Information %>% mutate_if(is.character, factor)
+vaccineTX <- vaccineTX %>% select(us_county, num_vaccine_sites, total_population, sites_per_1k_ppl)
+summary(vaccineTX)
+pairs(vaccineTX)
+
+# Visualize Some Data Using Map
+datatable(vaccineTX)
+vaccineTX <- vaccineTX %>% mutate(county = us_county %>% str_to_lower() %>% str_replace('\\s+county\\s*$', ''))
+counties_TX_clust <- counties_TX %>% left_join(vaccineTX)
+ggplot(counties_TX_clust, aes(long, lat)) + 
+  geom_polygon(aes(group = group, fill = sites_per_1k_ppl)) +
+  coord_quickmap() +
+  scale_fill_continuous(type = "viridis") +
+  labs(title = "Counties By Sites Per 1K People", subtitle = "Note Greyed Out Counties Are Non-Reporting")
+
+# Take Numeric Data, Scale
+scaledVaccineTX <- vaccineTX %>% 
+  select(num_vaccine_sites, total_population, sites_per_1k_ppl) %>% 
+  scale() %>% as_tibble()
+summary(scaledVaccineTX)
+
+# Perform K-Means
+km <- kmeans(scaledVaccineTX, centers = 3)
+km
+pairs(scaledVaccineTX, col = km$cluster + 1L)
+
+# Look At Cluster Profiles
+ggplot(pivot_longer(as_tibble(km$centers, rownames = "cluster"), 
+  cols = colnames(km$centers)), 
+  aes(y = name, x = value)) +
+  geom_bar(stat = "identity") +
+  facet_grid(rows = vars(cluster))
+
+# Make County Name Match Map County Names
+counties_TX_clust <- counties_TX %>% left_join(vaccineTX %>% add_column(cluster = factor(km$cluster)))
+ggplot(counties_TX_clust, aes(long, lat)) + 
+  geom_polygon(aes(group = group, fill = cluster)) +
+  coord_quickmap() + 
+  labs(title = "Clusters - Vaccine Site Data", subtitle = "Note Greyed Out Counties Are Non-Reporting")
+
+fviz_cluster(kmeans(scaledVaccineTX, centers = 3), data = scaledVaccineTX,
+             centroids = TRUE,  geom = "point", ellipse.type = "norm")
+
+d <- dist(scaledVaccineTX)
+hc <- hclust(d, method = "complete")
+fviz_dend(hc, k = 4)
+fviz_cluster(list(data = scaledVaccineTX, cluster = cutree(hc, k = 4)), geom = "point")
+
+counties_TX_clust <- counties_TX %>% left_join(vaccineTX %>% add_column(cluster = factor(db$cluster)))
+ggplot(counties_TX_clust, aes(long, lat)) + 
+  geom_polygon(aes(group = group, fill = cluster)) +
+  coord_quickmap() + 
+  labs(title = "Clusters - Vaccine Site Data", subtitle = "Note Greyed Out Counties Are Non-Reporting")
 
 
 # Project Two: Cluster Analysis
 
-# Calculate Rates, Select Important Variables
+# Make Character Factors, Filter TX
+cases <- COVID_19_cases_plus_census %>% mutate_if(is.character, factor)
+cases_TX <- COVID_19_cases_plus_census %>% filter(state == "TX")
 
+# Calculate Rates, Select Important Variables
 cases_TX <- cases_TX %>% 
   filter(confirmed_cases > 100) %>% 
   arrange(desc(confirmed_cases)) %>%    
@@ -58,14 +106,12 @@ summary(cases_TX)
 pairs(cases_TX[2:11])
 
 # Visualize Some Data Using Map
-
 datatable(cases_TX) %>% formatRound(c(5, 9, 10), 2) %>% formatPercentage(11, 2)
 counties <- as_tibble(map_data("county"))
 counties_TX <- counties %>% dplyr::filter(region == "texas") %>% 
   rename("county" = "subregion")
 
 # Make County Name Match Map County Names
-
 cases_TX <- cases_TX %>% mutate(county = county_name %>% str_to_lower() %>% str_replace('\\s+county\\s*$', ''))
 counties_TX_clust <- counties_TX %>% left_join(cases_TX)
 ggplot(counties_TX_clust, aes(long, lat)) + 
@@ -170,7 +216,37 @@ hdb
 plot(hdb, show_flat = TRUE)
 
 
+cases_TX <- COVID_19_cases_plus_census %>% filter(state == "TX")
+cases_TX <- cases_TX %>% 
+  filter(confirmed_cases > 100) %>% 
+  arrange(desc(confirmed_cases)) %>%    
+  select(county_name, housing_units, housing_built_2005_or_later, housing_built_2000_to_2004, housing_built_1939_or_earlier)
+pairs(cases_TX[2:5])
+plot(cases_TX$housing_built_1939_or_earlier~ cases_TX$housing_units, data = cases_TX)
 
+# Cluster cases_TX With K-means for years that housing was built
+cases_TX_scaled <- cases_TX %>% 
+  select(
+    housing_built_1939_or_earlier,
+    housing_built_2000_to_2004,
+    housing_built_2005_or_later,
+    housing_units
+  ) %>% 
+  scale() %>% as_tibble()
+summary(cases_TX_scaled)
+
+# Perform k-means
+km <- kmeans(cases_TX_scaled, centers = 4)
+km
+pairs(cases_TX_scaled, col = km$cluster + 1L)
+
+# Make County Name Match Map County Names
+counties_TX_clust <- counties_TX %>% left_join(cases_TX %>% add_column(cluster = factor(km$cluster)))
+ggplot(counties_TX_clust, aes(long, lat)) + 
+  geom_polygon(aes(group = group, fill = cluster)) +
+  coord_quickmap() + 
+  scale_fill_viridis_d() + 
+  labs(title = "Clusters", subtitle = "Only counties reporting 100+ cases")
 
 
 
