@@ -19,16 +19,22 @@ library(FactoMineR)
 library(factoextra)
 
 # Read Data
-COVID_19_cases_plus_census <- read_csv("Datasets/COVID-19_cases_plus_census_recent.csv")
-County_Vaccine_Information <- read_csv("Datasets/County_Vaccine_Information.csv")
+casesCensus <- read_csv("Datasets/COVID-19_cases_plus_census_recent.csv")
+vaccineInfo <- read_csv("Datasets/County_Vaccine_Information.csv")
 
 # Data Explorer Code
-plot_intro(COVID_19_cases_plus_census, title="Intro Plot for U.S. Covid-19 Cases and Census Dataset")
-plot_intro(County_Vaccine_Information, title="Intro Plot for Texas County Vaccine Sites Dataset")
+plot_intro(casesCensus, title="Intro Plot for U.S. Covid-19 Cases and Census Dataset")
+plot_intro(vaccineInfo, title="Intro Plot for Texas County Vaccine Sites Dataset")
 
 # Obtain County Names
 counties <- as_tibble(map_data("county"))
 counties_TX <- counties %>% dplyr::filter(region == "texas") %>% rename("county" = "subregion")
+
+# Filter On Texas, Make Factor, Split Data (Numeric)
+casesCensus <- casesCensus %>% filter(state == "TX") %>% mutate_if(is.character, factor) 
+censusNonNumeric <- casesCensus %>% select_if(~!is.numeric(.))
+censusNumeric <- casesCensus %>% select_if(is.numeric) %>% select(-last_col()) %>% 
+  na.omit() %>% scale() %>% as_tibble()
 
 
 
@@ -119,7 +125,6 @@ ggplot(vaccineClustHTX, aes(long, lat)) +
 # Housing Clustering
 
 # Sort Data In Descending Order (Amount Housing Units)
-housingTX <- COVID_19_cases_plus_census %>% mutate_if(is.character, factor) %>% filter(state == "TX")
 housingTX <- housingTX %>% arrange(desc(housing_units)) %>%    
   select(county_name, housing_units, housing_built_2005_or_later, housing_built_2000_to_2004, housing_built_1939_or_earlier)
 summary(housingTX)
@@ -134,6 +139,14 @@ ggplot(housingClustTX, aes(long, lat)) +
   coord_quickmap() +
   scale_fill_continuous(type = "viridis") +
   labs(title = "Counties By Number Housing Units")
+
+
+groundTruth <- within(groundTruth, {   
+  Income.cat <- NA # need to initialize variable
+  Income.cat[Income < 4000] <- "Low"
+  Income.cat[Income >= 4000 & Income < 5000] <- "Middle"
+  Income.cat[Income >= 5000] <- "High"
+} )
 
 # Take Numeric Data, Scale
 scaledHousingTX <- housingTX %>% 
@@ -451,4 +464,21 @@ hdb
 plot(hdb, show_flat = TRUE)
 
 
+
+
+
+
+cor_matrix <- cor(censusNumeric)                      # Correlation matrix
+cor_matrix
+
+cor_matrix_rm <- cor_matrix                  # Modify correlation matrix
+cor_matrix_rm[upper.tri(cor_matrix_rm)] <- 0
+diag(cor_matrix_rm) <- 0
+cor_matrix_rm
+
+data_new <- censusNumeric[, !apply(cor_matrix_rm, 2, function(x) any(x > 0.95))]
+cor_matrix <- cor(data_new) 
+ggcorrplot(cor_matrix, insig = "blank", hc.order = TRUE)
+
+# pca <- prcomp(censusNumeric, center = TRUE, scale. = TRUE)
 
