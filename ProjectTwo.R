@@ -27,34 +27,124 @@ vaccineInfo <- read_csv("Datasets/County_Vaccine_Information.csv")
 summary(casesCensus)
 summary(vaccineInfo)
 sumtable(casesCensus, out = 'htmlreturn')
-
-# Data Explorer Code
-plot_intro(casesCensus, title="Intro Plot for U.S. Covid-19 Cases and Census Dataset")
-plot_intro(vaccineInfo, title="Intro Plot for Texas County Vaccine Sites Dataset")
+sumtable(vaccineInfo, out = 'htmlreturn')
 
 # Obtain County Names
 counties <- as_tibble(map_data("county"))
 counties_TX <- counties %>% dplyr::filter(region == "texas") %>% rename("county" = "subregion")
 
-# Vaccine
+# Data Explorer Code
+plot_intro(casesCensus, title = "Intro Plot for U.S. Covid-19 Cases and Census Dataset")
+plot_intro(vaccineInfo, title = "Intro Plot for Texas County Vaccine Sites Dataset")
+plot_intro(counties_TX, title = "Intro Plot for Texas County Positions")
+
+# Clean Vaccine Data (Scale, Remove Columns)
 vaccineInfo <- vaccineInfo  %>% mutate_if(is.character, factor)
 vaccineNonNumeric <- vaccineInfo %>% select_if(~!is.numeric(.))
 vaccineNumeric <- vaccineInfo %>% select_if(is.numeric) %>% scale() %>% as_tibble()
 vaccineInfo <- vaccineNumeric %>% add_column(vaccineNonNumeric$us_county) %>% 
   rename("us_county" = "vaccineNonNumeric$us_county")
 
-# Filter On Texas, Make Factor, Split Data (Numeric)
+# Clean Census Data (Filter, Scale, Remove Columns, Remove Rows)
 casesCensus <- casesCensus %>% filter(state == "TX") %>% mutate_if(is.character, factor)
 censusNonNumeric <- casesCensus %>% select_if(~!is.numeric(.)) %>% select(1:2)
-censusNumeric <- casesCensus %>% select_if(is.numeric) %>% select(-last_col()) %>% scale() %>% as_tibble()
+censusNumeric <- casesCensus %>% select_if(is.numeric) %>% select(-last_col())
 casesCensus <- censusNumeric %>% add_column(censusNonNumeric$county_name) %>% 
-  rename("county_name" = "censusNonNumeric$county_name")
-censusNumeric <- censusNumeric %>% na.omit()
+  rename("county_name" = "censusNonNumeric$county_name") %>% na.omit()
+casesCensus <- casesCensus %>% select_if(is.numeric) %>% mutate(
+  cases_per_1000 = confirmed_cases / total_pop * 1000, 
+  deaths_per_1000 = deaths / total_pop * 1000, 
+  death_per_case = deaths / confirmed_cases) %>%
+  scale() %>% as_tibble() %>% add_column(casesCensus$county_name) %>% 
+  rename("county_name" = "casesCensus$county_name")
+
+# Combine Data, Scale Numerical Data
+combinedData <- casesCensus %>% inner_join(vaccineInfo, by = c('county_name' = 'us_county'))
+combinedDataNumeric <- combinedData %>% select_if(is.numeric) %>% scale() %>% as_tibble()
+
+# Initial Correlation Matrix - Let's Reduce Dimension
+corrMatrix <- cor(combinedDataNumeric)
+ggcorrplot(corrMatrix, insig = "blank", hc.order = TRUE)
+
+# Remove Highly Correlated Variables, Show New Matrix
+corrMatrixRemove <- corrMatrix
+corrMatrixRemove[upper.tri(corrMatrixRemove)] <- 0
+diag(corrMatrixRemove) <- 0
+corrMatrixRemove
+combinedDataNumeric <- combinedDataNumeric[, !apply(corrMatrixRemove, 2, function(x) any(x > 0.95))]
+corrMatrix <- cor(combinedDataNumeric)
+ggcorrplot(corrMatrix, insig = "blank", hc.order = TRUE)
+
+# Perform PCA
+combinedDataNumericPCA <- princomp(corrMatrix)
+summary(combinedDataNumericPCA)
+combinedDataNumericPCA$loadings[, 1:2]
+
+# Plot PCA Results
+fviz_eig(combinedDataNumericPCA, addlabels = TRUE)
+fviz_pca_var(combinedDataNumericPCA, col.var = "black")
+fviz_cos2(combinedDataNumericPCA, choice = "var", axes = 1:2)
+fviz_pca_var(combinedDataNumericPCA, col.var = "cos2",
+             gradient.cols = c("black", "orange", "green"), repel = TRUE)
+
+# Box Plot (See Outliers)
+summary(combinedDataNumeric)
+boxplot(combinedDataNumeric)$out
+
+# Introduce Country Name Into Dataset
+dataFinal <- combinedDataNumeric %>% add_column(combinedData$county_name) %>% 
+  rename("county_name" = "combinedData$county_name") %>% 
+  select(county_name, everything())
+
+# Outlier Removal
+zScores <- as.data.frame(sapply(combinedDataNumeric, function(data) (abs(data - mean(data)) / sd(data))))
+dataFinal <- dataFinal[!rowSums(zScores > 3), ]
+boxplot(dataFinal %>% select(-1))$out
 
 # Summary After Manipulation
-summary(casesCensus)
-summary(vaccineInfo)
-sumtable(casesCensus, out = 'htmlreturn')
+summary(dataFinal)
+sumtable(dataFinal, out = 'htmlreturn')
+
+# Data Explorer Code
+plot_intro(dataFinal, title = "Intro Plot for Finalized Combined Dataset")
+
+
+
+# Visualize Some Data Using Map
+datatable(dataFinal) %>% formatRound(c(5, 9, 10), 2) %>% formatPercentage(11, 2)
+
+# Cluster cases_TX With K-Means
+subsetOne <- dataFinal %>% 
+  select(median_income, median_age, income_per_capita) %>% 
+  scale() %>% as_tibble()
+summary(subsetOne)
+
+# Perform k-Means
+subsetOneKM <- kmeans(subsetOne, centers = 3)
+subsetOneKM
+pairs(subsetOne, col = subsetOneKM$cluster + 1L)
+
+# Visualize K-Means Plot
+clustersSubsetOneKM <- subsetOne %>% add_column(cluster = factor(subsetOneKM$cluster))
+subsetOneCentroids <- as_tibble(subsetOneKM$centers, rownames = "cluster")
+fviz_cluster(subsetOneKM, data = subsetOne, centroids = TRUE, ellipse.type = "norm", 
+             geom = "point", main = "KMeans Dimension Plot")
+
+# Look At Cluster Profiles
+ggplot(pivot_longer(subsetOneCentroids, 
+  cols = colnames(subsetOneKM$centers)), 
+  aes(x = value, y = name, fill = cluster)) +
+  geom_bar(stat = "identity") +
+  facet_grid(rows = vars(cluster)) +
+  scale_fill_viridis_d()
+
+
+
+
+
+
+
+# PREVIOUS CODE
 
 
 
@@ -555,37 +645,6 @@ hdb
 plot(hdb, show_flat = TRUE)
 
 
-# Correlation Stuff
-
-cor_matrix <- cor(censusNumeric)                      # Correlation matrix
-cor_matrix
-
-cor_matrix_rm <- cor_matrix                  # Modify correlation matrix
-cor_matrix_rm[upper.tri(cor_matrix_rm)] <- 0
-diag(cor_matrix_rm) <- 0
-cor_matrix_rm
-
-data_new <- censusNumeric[, !apply(cor_matrix_rm, 2, function(x) any(x > 0.95))]
-corrMatrix <- cor(data_new) 
-ggcorrplot(corrMatrix, insig = "blank", hc.order = TRUE)
-head(data_new)
-
-data.pca <- princomp(corrMatrix)
-summary(data.pca)
-data.pca$loadings[, 1:2]
-fviz_eig(data.pca, addlabels = TRUE)
-fviz_pca_var(data.pca, col.var = "black")
-fviz_cos2(data.pca, choice = "var", axes = 1:2)
-fviz_pca_var(data.pca, col.var = "cos2",
-             gradient.cols = c("black", "orange", "green"),
-             repel = TRUE)
-
-summary(data_new)
-boxplot(data_new)$out
-
-z_scores <- as.data.frame(sapply(data_new, function(data) (abs(data - mean(data)) / sd(data))))
-no_outliers <- z_scores[!rowSums(z_scores>3), ]
-boxplot(no_outliers)$out
 
 
 # Visualize Some Data Using Map
@@ -629,22 +688,14 @@ cases_TX_km %>% group_by(cluster) %>% summarize(
   avg_deaths = mean(deaths_per_1000))
 
 # KNN Distance Plot
-kNNdist(cases_TX_scaled, k = 4)
-kNNdist(cases_TX_scaled, k = 4)
-kNNdistplot(cases_TX_scaled, k = 4)
+kNNdist(no_outliers, k = 4)
+kNNdist(no_outliers, k = 4)
+kNNdistplot(no_outliers, k = 4)
 
 # Uses Euclidean Distance
-db <- dbscan(cases_TX_scaled, eps = 1.0, minPts = 5)
+db <- dbscan(no_outliers, eps = 1.0, minPts = 5)
 db
-pairs(cases_TX_scaled, col = db$cluster + 1L)
-
-data(iris)
-iris <- as.matrix(iris[, 1:4])
-kNNdist(iris, k = 4)
-kNNdist(iris, k = 4, all = TRUE)
-kNNdistplot(iris, k = 4)
-cl <- dbscan(iris, eps = .7, minPts = 5)
-pairs(iris, col = cl$cluster + 1L)
+pairs(no_outliers, col = db$cluster + 1L)
 
 # Look At Cluster Profiles
 ggplot(pivot_longer(as_tibble(km$centers, rownames = "cluster"), 
@@ -653,12 +704,12 @@ ggplot(pivot_longer(as_tibble(km$centers, rownames = "cluster"),
   geom_bar(stat = "identity") +
   facet_grid(rows = vars(cluster))
 
-opt <- optics(cases_TX_scaled, eps = 1, minPts = 4)
+opt <- optics(no_outliers, eps = 1, minPts = 4)
 opt
 opt <- extractDBSCAN(opt, eps_cl = 0.4)
 plot(opt)
 
-hdb <- hdbscan(cases_TX_scaled, minPts = 4)
+hdb <- hdbscan(no_outliers, minPts = 4)
 hdb
 plot(hdb, show_flat = TRUE)
 
