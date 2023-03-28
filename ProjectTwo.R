@@ -17,10 +17,16 @@ library(dbscan)
 library(cluster)
 library(FactoMineR)
 library(factoextra)
+library(vtable)
 
 # Read Data
 casesCensus <- read_csv("Datasets/COVID-19_cases_plus_census_recent.csv")
 vaccineInfo <- read_csv("Datasets/County_Vaccine_Information.csv")
+
+# Summary Before Manipulation
+summary(casesCensus)
+summary(vaccineInfo)
+sumtable(casesCensus, out = 'htmlreturn')
 
 # Data Explorer Code
 plot_intro(casesCensus, title="Intro Plot for U.S. Covid-19 Cases and Census Dataset")
@@ -30,35 +36,48 @@ plot_intro(vaccineInfo, title="Intro Plot for Texas County Vaccine Sites Dataset
 counties <- as_tibble(map_data("county"))
 counties_TX <- counties %>% dplyr::filter(region == "texas") %>% rename("county" = "subregion")
 
+# Vaccine
+vaccineInfo <- vaccineInfo  %>% mutate_if(is.character, factor)
+vaccineNonNumeric <- vaccineInfo %>% select_if(~!is.numeric(.))
+vaccineNumeric <- vaccineInfo %>% select_if(is.numeric) %>% scale() %>% as_tibble()
+vaccineInfo <- vaccineNumeric %>% add_column(vaccineNonNumeric$us_county) %>% 
+  rename("us_county" = "vaccineNonNumeric$us_county")
+
 # Filter On Texas, Make Factor, Split Data (Numeric)
-casesCensus <- casesCensus %>% filter(state == "TX") %>% mutate_if(is.character, factor) 
-censusNonNumeric <- casesCensus %>% select_if(~!is.numeric(.))
-censusNumeric <- casesCensus %>% select_if(is.numeric) %>% select(-last_col()) %>% 
-  na.omit() %>% scale() %>% as_tibble()
+casesCensus <- casesCensus %>% filter(state == "TX") %>% mutate_if(is.character, factor)
+censusNonNumeric <- casesCensus %>% select_if(~!is.numeric(.)) %>% select(1:2)
+censusNumeric <- casesCensus %>% select_if(is.numeric) %>% select(-last_col()) %>% scale() %>% as_tibble()
+casesCensus <- censusNumeric %>% add_column(censusNonNumeric$county_name) %>% 
+  rename("county_name" = "censusNonNumeric$county_name")
+censusNumeric <- censusNumeric %>% na.omit()
+
+# Summary After Manipulation
+summary(casesCensus)
+summary(vaccineInfo)
+sumtable(casesCensus, out = 'htmlreturn')
 
 
 
 # Vaccine Information Clustering
 
-# Note Data Already Sorted In Ascending Order (sites_per_1k_ppl)
-vaccineTX <- County_Vaccine_Information %>% mutate_if(is.character, factor)
-vaccineTX <- vaccineTX %>% select(us_county, num_vaccine_sites, total_population, sites_per_1k_ppl)
+# Note Data Already Sorted In Ascending Order
+vaccineTX <- vaccineInfo %>% select(us_county, num_vaccine_sites, total_population, sites_per_1k_ppl)
 summary(vaccineTX)
 pairs(vaccineTX)
 
-# Visualize Some Data Using Map
+# Visualize Some Data Using Map (Ground Truth)
 datatable(vaccineTX)
 vaccineTX <- vaccineTX %>% mutate(county = us_county %>% str_to_lower() %>% str_replace('\\s+county\\s*$', ''))
 vaccineClustTX <- counties_TX %>% left_join(vaccineTX)
 ggplot(vaccineClustTX, aes(long, lat)) + 
-  geom_polygon(aes(group = group, fill = sites_per_1k_ppl)) +
+  geom_polygon(aes(group = group, fill = num_vaccine_sites)) +
   coord_quickmap() +
   scale_fill_continuous(type = "viridis") +
   labs(title = "Counties By Vaccine Sites Per 1K People", subtitle = "Note Greyed Out Counties Are Non-Reporting")
 
 # Take Numeric Data, Scale
 scaledVaccineTX <- vaccineTX %>% 
-  select(num_vaccine_sites, total_population, sites_per_1k_ppl) %>% 
+  select(total_population, sites_per_1k_ppl) %>% 
   scale() %>% as_tibble()
 
 # Perform K-Means
@@ -69,10 +88,8 @@ pairs(scaledVaccineTX, col = vaccineKM$cluster + 1L)
 # Visualize Singular Plots (Cluster)
 clustersVaccineKM <- scaledVaccineTX %>% add_column(cluster = factor(vaccineKM$cluster))
 vaccineCentroids <- as_tibble(vaccineKM$centers, rownames = "cluster")
-fviz_cluster(vaccineKM, data = scaledVaccineTX, choose.vars = c("sites_per_1k_ppl", "total_population"), 
-             centroids = TRUE, ellipse.type = "norm", geom = "point", main = "Single Pair Plot; Total Population Vs. Sites Per 1K People")
 fviz_cluster(vaccineKM, data = scaledVaccineTX, choose.vars = c("num_vaccine_sites", "total_population"), 
-             centroids = TRUE, ellipse.type = "norm", geom = "point", main = "Single Pair Plot; Number Of Vaccine Sites Vs. Sites Per 1K People")
+             centroids = TRUE, ellipse.type = "norm", geom = "point", main = "Single Pair Plot; Total Population Vs. Number Vaccine Sites")
 
 # Look At Cluster Profiles
 ggplot(pivot_longer(vaccineCentroids, 
@@ -85,7 +102,7 @@ ggplot(pivot_longer(vaccineCentroids,
 # Look At First Cluster
 vaccineC1 <- clustersVaccineKM %>% filter(cluster == 1)
 summary(vaccineC1)
-ggplot(vaccineC1, aes(sites_per_1k_ppl, total_population)) + geom_point()
+ggplot(vaccineC1, aes(num_vaccine_sites, total_population)) + geom_point()
 
 # Make County Name Match Map County Names
 vaccineClustKMTX <- counties_TX %>% left_join(vaccineTX %>% add_column(cluster = factor(vaccineKM$cluster)))
@@ -125,8 +142,8 @@ ggplot(vaccineClustHTX, aes(long, lat)) +
 # Housing Clustering
 
 # Sort Data In Descending Order (Amount Housing Units)
-housingTX <- housingTX %>% arrange(desc(housing_units)) %>%    
-  select(county_name, housing_units, housing_built_2005_or_later, housing_built_2000_to_2004, housing_built_1939_or_earlier)
+housingTX <- casesCensus %>% arrange(desc(housing_units)) %>%    
+  select(county_name, confirmed_cases, housing_units, housing_built_2005_or_later, housing_built_2000_to_2004, housing_built_1939_or_earlier)
 summary(housingTX)
 pairs(housingTX)
 
@@ -135,7 +152,7 @@ datatable(housingTX)
 housingTX <- housingTX %>% mutate(county = county_name %>% str_to_lower() %>% str_replace('\\s+county\\s*$', ''))
 housingClustTX <- counties_TX %>% left_join(housingTX)
 ggplot(housingClustTX, aes(long, lat)) + 
-  geom_polygon(aes(group = group, fill = housing_units)) +
+  geom_polygon(aes(group = group, fill = confirmed_cases)) +
   coord_quickmap() +
   scale_fill_continuous(type = "viridis") +
   labs(title = "Counties By Number Housing Units")
@@ -347,6 +364,80 @@ ggplot(scaledCommuteTX %>% add_column(cluster = factor(db$cluster)),
 fviz_cluster(db, scaledCommuteTX, choose.vars = c("commute_15_19_mins", "total_pop"), geom = "point")
 
 
+### Ethnicities Clustering
+ethnicitiesTX <- casesCensus %>% filter(state == "TX")
+ethnicitiesTX <- ethnicitiesTX %>% 
+  filter(confirmed_cases > 100) %>% 
+  arrange(desc(confirmed_cases)) %>%    
+  select(county_name, 
+         white_pop,
+         black_pop,
+         asian_pop,
+         amerindian_pop,
+         hispanic_pop,
+         other_race_pop)
+pairs(ethnicitiesTX[2:7])
+# Cluster cases_TX With K-means for ethnicities
+scaledEthnicitiesTX <- ethnicitiesTX %>% 
+  select(
+    white_pop,
+    black_pop,
+    asian_pop,
+    amerindian_pop,
+    hispanic_pop,
+    other_race_pop
+  ) %>% 
+  scale() %>% as_tibble()
+summary(scaledEthnicitiesTX)
+
+# Perform k-means
+km <- kmeans(scaledEthnicitiesTX, centers = 6)
+km
+pairs(scaledEthnicitiesTX, col = km$cluster + 1L)
+
+# Make County Name Match Map County Names
+ethnicitiesTX <- ethnicitiesTX %>% mutate(county = county_name %>% str_to_lower() %>% str_replace('\\s+county\\s*$', ''))
+counties_TX_clust <- counties_TX %>% left_join(ethnicitiesTX %>% add_column(cluster = factor(km$cluster)))
+ggplot(counties_TX_clust, aes(long, lat)) + 
+  geom_polygon(aes(group = group, fill = cluster)) +
+  coord_quickmap() + 
+  scale_fill_viridis_d() + 
+  labs(title = "Clusters", subtitle = "Only counties reporting 100+ cases")
+
+# Hierarchical Clustering
+d <- dist(scaledEthnicitiesTX)
+hc <- hclust(d, method = "complete")
+plot(hc)
+fviz_dend(hc, k = 5)
+
+clusters <- cutree(hc, k = 5)
+cluster_complete <- scaledEthnicitiesTX %>%
+  add_column(cluster = factor(clusters))
+cluster_complete
+
+fviz_cluster(list(data = scaledEthnicitiesTX, cluster = cutree(hc, k = 5)), geom = "point", choose.vars = c("hispanic_pop", "white_pop"))
+
+# Make County Name Match Map County Names
+ethnicitiesTX <- ethnicitiesTX %>% mutate(county = county_name %>% str_to_lower() %>% str_replace('\\s+county\\s*$', ''))
+counties_TX_clust <- counties_TX %>% left_join(ethnicitiesTX %>% add_column(cluster = factor(cluster_complete$cluster)))
+ggplot(counties_TX_clust, aes(long, lat)) + 
+  geom_polygon(aes(group = group, fill = cluster)) +
+  coord_quickmap() + 
+  scale_fill_viridis_d() + 
+  labs(title = "Clusters", subtitle = "Only counties reporting 100+ cases")
+
+# DBSCAN
+kNNdistplot(scaledEthnicitiesTX, k = 3)
+abline(h = 1, col = "red")
+# Uses Euclidean Distance
+db <- dbscan(scaledEthnicitiesTX, eps = 1, minPts = 5)
+db
+str(db)
+ggplot(scaledEthnicitiesTX %>% add_column(cluster = factor(db$cluster)),
+       aes(white_pop, hispanic_pop, color = cluster)) + geom_point()
+fviz_cluster(db, scaledCommuteTX, choose.vars = c("white_pop", "hispanic_pop"), geom = "point")
+
+
 
 
 
@@ -464,9 +555,7 @@ hdb
 plot(hdb, show_flat = TRUE)
 
 
-
-
-
+# Correlation Stuff
 
 cor_matrix <- cor(censusNumeric)                      # Correlation matrix
 cor_matrix
@@ -477,8 +566,99 @@ diag(cor_matrix_rm) <- 0
 cor_matrix_rm
 
 data_new <- censusNumeric[, !apply(cor_matrix_rm, 2, function(x) any(x > 0.95))]
-cor_matrix <- cor(data_new) 
-ggcorrplot(cor_matrix, insig = "blank", hc.order = TRUE)
+corrMatrix <- cor(data_new) 
+ggcorrplot(corrMatrix, insig = "blank", hc.order = TRUE)
+head(data_new)
 
-# pca <- prcomp(censusNumeric, center = TRUE, scale. = TRUE)
+data.pca <- princomp(corrMatrix)
+summary(data.pca)
+data.pca$loadings[, 1:2]
+fviz_eig(data.pca, addlabels = TRUE)
+fviz_pca_var(data.pca, col.var = "black")
+fviz_cos2(data.pca, choice = "var", axes = 1:2)
+fviz_pca_var(data.pca, col.var = "cos2",
+             gradient.cols = c("black", "orange", "green"),
+             repel = TRUE)
+
+summary(data_new)
+boxplot(data_new)$out
+
+z_scores <- as.data.frame(sapply(data_new, function(data) (abs(data - mean(data)) / sd(data))))
+no_outliers <- z_scores[!rowSums(z_scores>3), ]
+boxplot(no_outliers)$out
+
+
+# Visualize Some Data Using Map
+datatable(no_outliers) %>% formatRound(c(5, 9, 10), 2) %>% formatPercentage(11, 2)
+
+# Cluster cases_TX With k-means
+no_outliers <- no_outliers %>% 
+  select(
+    median_income,
+    median_age, 
+    income_per_capita
+  ) %>% 
+  scale() %>% as_tibble()
+summary(no_outliers)
+
+# Perform k-means
+km <- kmeans(no_outliers, centers = 3)
+km
+pairs(no_outliers, col = km$cluster + 1L)
+
+# Look At Cluster Profiles
+ggplot(pivot_longer(as_tibble(km$centers, rownames = "cluster"), 
+                    cols = colnames(km$centers)), 
+       aes(y = name, x = value)) +
+  geom_bar(stat = "identity") +
+  facet_grid(rows = vars(cluster))
+
+# Make County Name Match Map County Names
+counties_TX_clust <- counties_TX %>% left_join(cases_TX %>% add_column(cluster = factor(km$cluster)))
+ggplot(counties_TX_clust, aes(long, lat)) + 
+  geom_polygon(aes(group = group, fill = cluster)) +
+  coord_quickmap() + 
+  scale_fill_viridis_d() + 
+  labs(title = "Clusters", subtitle = "Only counties reporting 100+ cases")
+
+# Note: Think About Outliers, Appropriate #Clusters, What Clusters Mean For Decision Maker
+# Check If Cases / Deaths By 1000 People Are Different In Different Clusters:
+cases_TX_km <- cases_TX %>% add_column(cluster = factor(km$cluster))
+cases_TX_km %>% group_by(cluster) %>% summarize(
+  avg_cases = mean(cases_per_1000), 
+  avg_deaths = mean(deaths_per_1000))
+
+# KNN Distance Plot
+kNNdist(cases_TX_scaled, k = 4)
+kNNdist(cases_TX_scaled, k = 4)
+kNNdistplot(cases_TX_scaled, k = 4)
+
+# Uses Euclidean Distance
+db <- dbscan(cases_TX_scaled, eps = 1.0, minPts = 5)
+db
+pairs(cases_TX_scaled, col = db$cluster + 1L)
+
+data(iris)
+iris <- as.matrix(iris[, 1:4])
+kNNdist(iris, k = 4)
+kNNdist(iris, k = 4, all = TRUE)
+kNNdistplot(iris, k = 4)
+cl <- dbscan(iris, eps = .7, minPts = 5)
+pairs(iris, col = cl$cluster + 1L)
+
+# Look At Cluster Profiles
+ggplot(pivot_longer(as_tibble(km$centers, rownames = "cluster"), 
+                    cols = colnames(km$centers)), 
+       aes(y = name, x = value)) +
+  geom_bar(stat = "identity") +
+  facet_grid(rows = vars(cluster))
+
+opt <- optics(cases_TX_scaled, eps = 1, minPts = 4)
+opt
+opt <- extractDBSCAN(opt, eps_cl = 0.4)
+plot(opt)
+
+hdb <- hdbscan(cases_TX_scaled, minPts = 4)
+hdb
+plot(hdb, show_flat = TRUE)
 
