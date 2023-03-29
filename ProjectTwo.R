@@ -184,6 +184,21 @@ ggplot(subsetOneHClustTX, aes(long, lat)) +
 
 
 
+# SUBSET ONE - DBSCAN
+
+# DBSCAN
+kNNdistplot(subsetOne[,2:4], k = 3)
+abline(h = 0.4, col = "red")
+# Uses Euclidean Distance
+db <- dbscan(subsetOne[,2:4], eps = 0.4, minPts = 3)
+db
+str(db)
+ggplot(subsetOne[,2:4] %>% add_column(cluster = factor(db$cluster)),
+       aes(median_age, median_income, color = cluster)) + geom_point()
+fviz_cluster(db, subsetOne[,2:4], choose.vars = c("median_age", "median_income"), geom = "point")
+
+
+
 
 
 
