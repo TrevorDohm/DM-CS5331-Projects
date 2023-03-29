@@ -148,12 +148,47 @@ ggplot(subsetOneClustKMTX, aes(long, lat)) +
   geom_polygon(aes(group = group, fill = cluster)) +
   coord_quickmap() + 
   scale_fill_viridis_d(na.value = "gray50") +
-  labs(title = "Clusters - Subset One Data", subtitle = "Note Greyed Out Counties Are Non-Reporting or Outliers")
+  labs(title = "K-Means Clusters - Subset One Data", subtitle = "Note Greyed Out Counties Are Non-Reporting or Outliers")
+
 
 
 # SUBSET ONE - HIERARCHICAL CLUSTERING
 
+# Print Table Of dataFinal
+datatable(dataFinal) %>% formatRound(c(5, 9, 10), 2) %>% formatPercentage(11, 2)
 
+# Hierarchical Clustering
+distSubsetOne <- dist(subsetOne[,2:4])
+hcSubsetOne <- hclust(distSubsetOne, method = "complete")
+fviz_dend(hcSubsetOne, k = 3)
+fviz_cluster(list(data = subsetOne[,2:4], cluster = cutree(hcSubsetOne, k = 3)), choose.vars = c("median_age", "median_income"), geom = "point")
+
+# Visualize Single-Link Dendrogram
+singleSubsetOne <- hclust(distSubsetOne, method = "single")
+fviz_dend(singleSubsetOne, k = 3)
+
+# Visualize Clustering
+HClustersSubsetOne <- cutree(hcSubsetOne, k = 3)
+completeSubsetOneHC <- subsetOne[,2:4] %>%
+  add_column(cluster = factor(HClustersSubsetOne))
+completeSubsetOneHC
+ggplot(completeSubsetOneHC, aes(median_age, median_income, color = cluster)) + geom_point()
+
+
+# Visualize Some Data Using Map (HC)
+subsetOneHClustTX <- counties_TX %>% left_join(subsetOne %>% add_column(cluster = factor(HClustersSubsetOne)))
+ggplot(subsetOneHClustTX, aes(long, lat)) + 
+  geom_polygon(aes(group = group, fill = cluster)) +
+  coord_quickmap() + 
+  scale_fill_viridis_d(na.value = "gray50") +
+  labs(title = "Hierarchical Clusters - Subset One Data", subtitle = "Note Greyed Out Counties Are Non-Reporting or Outliers")
+
+vaccineClustHTX <- counties_TX %>% left_join(vaccineTX %>% add_column(cluster = factor(clustersVaccineH)))
+ggplot(vaccineClustHTX, aes(long, lat)) + 
+  geom_polygon(aes(group = group, fill = cluster)) +
+  coord_quickmap() + 
+  scale_fill_viridis_d(na.value = "gray50") +
+  labs(title = "Clusters - Vaccine Site Data", subtitle = "Note Greyed Out Counties Are Non-Reporting")
 
 
 
