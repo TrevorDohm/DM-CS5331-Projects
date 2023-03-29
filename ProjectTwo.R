@@ -108,26 +108,30 @@ sumtable(dataFinal, out = 'htmlreturn')
 # Data Explorer Code
 plot_intro(dataFinal, title = "Intro Plot for Finalized Combined Dataset")
 
+# Add County Name To dataFinal For All Future Map Plots
+dataFinal <- dataFinal %>% mutate(county = county_name %>% str_to_lower() %>% str_replace('\\s+county\\s*$', ''))
 
 
-# Visualize Some Data Using Map
+# SUBSET ONE - KMEANS
+
+# Print Table Of dataFinal
 datatable(dataFinal) %>% formatRound(c(5, 9, 10), 2) %>% formatPercentage(11, 2)
 
 # Cluster cases_TX With K-Means
 subsetOne <- dataFinal %>% 
-  select(median_income, median_age, income_per_capita) %>% 
-  scale() %>% as_tibble()
+  select(county, median_income, median_age, income_per_capita) 
+subsetOne[,2:4] %>% scale() %>% as_tibble()
 summary(subsetOne)
 
-# Perform k-Means
-subsetOneKM <- kmeans(subsetOne, centers = 3)
+# Perform K-Means
+subsetOneKM <- kmeans(subsetOne[,2:4], centers = 3)
 subsetOneKM
-pairs(subsetOne, col = subsetOneKM$cluster + 1L)
+pairs(subsetOne[,2:4], col = subsetOneKM$cluster + 1L)
 
 # Visualize K-Means Plot
 clustersSubsetOneKM <- subsetOne %>% add_column(cluster = factor(subsetOneKM$cluster))
 subsetOneCentroids <- as_tibble(subsetOneKM$centers, rownames = "cluster")
-fviz_cluster(subsetOneKM, data = subsetOne, centroids = TRUE, ellipse.type = "norm", 
+fviz_cluster(subsetOneKM, data = subsetOne[,2:4], centroids = TRUE, ellipse.type = "norm", 
              geom = "point", main = "KMeans Dimension Plot")
 
 # Look At Cluster Profiles
@@ -137,6 +141,18 @@ ggplot(pivot_longer(subsetOneCentroids,
   geom_bar(stat = "identity") +
   facet_grid(rows = vars(cluster)) +
   scale_fill_viridis_d()
+
+# Visualize Some Data Using Map (K-means)
+subsetOneClustKMTX <- counties_TX %>% left_join(subsetOne %>% add_column(cluster = factor(subsetOneKM$cluster)))
+ggplot(subsetOneClustKMTX, aes(long, lat)) + 
+  geom_polygon(aes(group = group, fill = cluster)) +
+  coord_quickmap() + 
+  scale_fill_viridis_d(na.value = "gray50") +
+  labs(title = "Clusters - Subset One Data", subtitle = "Note Greyed Out Counties Are Non-Reporting or Outliers")
+
+
+# SUBSET ONE - HIERARCHICAL CLUSTERING
+
 
 
 
