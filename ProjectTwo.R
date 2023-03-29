@@ -18,6 +18,7 @@ library(cluster)
 library(FactoMineR)
 library(factoextra)
 library(vtable)
+library(NbClust)
 
 # Read Data
 casesCensus <- read_csv("Datasets/COVID-19_cases_plus_census_recent.csv")
@@ -169,6 +170,10 @@ ggplot(subsetOneClustKMTX, aes(long, lat)) +
 # Print Table Of dataFinal
 datatable(dataFinal) %>% formatRound(c(5, 9, 10), 2) %>% formatPercentage(11, 2)
 
+# Use Gap Statistic To Determine Number of Clusters
+gap_stat <- clusGap(subsetOne[,2:4], FUN = hcut, K.max = 10, B = 10)
+fviz_gap_stat(gap_stat)
+
 # Hierarchical Clustering
 distSubsetOne <- dist(subsetOne[,2:4])
 hcSubsetOne <- hclust(distSubsetOne, method = "complete")
@@ -270,6 +275,10 @@ ggplot(subsetTwoClustKMTX, aes(long, lat)) +
 
 # Print Table Of dataFinal
 datatable(dataFinal) %>% formatRound(c(5, 9, 10), 2) %>% formatPercentage(11, 2)
+
+# Use Gap Statistic To Determine Number of Clusters
+gap_stat <- clusGap(subsetTwo[,2:4], FUN = hcut, K.max = 10, B = 10)
+fviz_gap_stat(gap_stat)
 
 # Hierarchical Clustering
 distSubsetTwo <- dist(subsetTwo[,2:4])
