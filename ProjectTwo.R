@@ -123,6 +123,18 @@ subsetOne <- dataFinal %>%
 subsetOne[,2:4] %>% scale() %>% as_tibble()
 summary(subsetOne)
 
+## We will use different methods and try 1-10 clusters.
+set.seed(1234)
+ks <- 2:10
+
+# Find Optimal Number of Clusters for kMeans
+WCSS <- sapply(ks, FUN = function(k) {
+  kmeans(subsetOne[,2:4], centers = k, nstart = 5)$tot.withinss
+})
+
+ggplot(as_tibble(ks, WCSS), aes(ks, WCSS)) + geom_line() +
+  geom_vline(xintercept = 3, color = "red", linetype = 2)
+
 # Perform K-Means
 subsetOneKM <- kmeans(subsetOne[,2:4], centers = 3)
 subsetOneKM
@@ -190,7 +202,7 @@ ggplot(subsetOneHClustTX, aes(long, lat)) +
 kNNdistplot(subsetOne[,2:4], k = 3)
 abline(h = 0.4, col = "red")
 # Uses Euclidean Distance
-db <- dbscan(subsetOne[,2:4], eps = 0.4, minPts = 3)
+db <- dbscan(subsetOne[,2:4], eps = 0.4, minPts = 4)
 db
 str(db)
 ggplot(subsetOne[,2:4] %>% add_column(cluster = factor(db$cluster)),
@@ -212,6 +224,18 @@ subsetTwo <- dataFinal %>%
   select(county, hispanic_any_race, sites_per_1k_ppl, death_per_case) 
 subsetTwo[,2:4] %>% scale() %>% as_tibble()
 summary(subsetTwo)
+
+## We will use different methods and try 1-10 clusters.
+set.seed(5678)
+ks <- 2:10
+
+# Find Optimal Number of Clusters for kMeans
+WCSS <- sapply(ks, FUN = function(k) {
+  kmeans(subsetTwo[,2:4], centers = k, nstart = 5)$tot.withinss
+})
+
+ggplot(as_tibble(ks, WCSS), aes(ks, WCSS)) + geom_line() +
+  geom_vline(xintercept = 3, color = "red", linetype = 2)
 
 # Perform K-Means
 subsetTwoKM <- kmeans(subsetTwo[,2:4], centers = 3)
