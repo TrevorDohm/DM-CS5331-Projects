@@ -174,7 +174,6 @@ completeSubsetOneHC <- subsetOne[,2:4] %>%
 completeSubsetOneHC
 ggplot(completeSubsetOneHC, aes(median_age, median_income, color = cluster)) + geom_point()
 
-
 # Visualize Some Data Using Map (HC)
 subsetOneHClustTX <- counties_TX %>% left_join(subsetOne %>% add_column(cluster = factor(HClustersSubsetOne)))
 ggplot(subsetOneHClustTX, aes(long, lat)) + 
@@ -183,14 +182,80 @@ ggplot(subsetOneHClustTX, aes(long, lat)) +
   scale_fill_viridis_d(na.value = "gray50") +
   labs(title = "Hierarchical Clusters - Subset One Data", subtitle = "Note Greyed Out Counties Are Non-Reporting or Outliers")
 
-vaccineClustHTX <- counties_TX %>% left_join(vaccineTX %>% add_column(cluster = factor(clustersVaccineH)))
-ggplot(vaccineClustHTX, aes(long, lat)) + 
+
+
+
+
+
+# SUBSET TWO - KMEANS
+
+# Print Table Of dataFinal
+datatable(dataFinal) %>% formatRound(c(5, 9, 10), 2) %>% formatPercentage(11, 2)
+
+# Cluster cases_TX With K-Means
+subsetTwo <- dataFinal %>% 
+  select(county, hispanic_any_race, sites_per_1k_ppl, death_per_case) 
+subsetTwo[,2:4] %>% scale() %>% as_tibble()
+summary(subsetTwo)
+
+# Perform K-Means
+subsetTwoKM <- kmeans(subsetTwo[,2:4], centers = 3)
+subsetTwoKM
+pairs(subsetTwo[,2:4], col = subsetTwoKM$cluster + 1L)
+
+# Visualize K-Means Plot
+clustersSubsetTwoKM <- subsetTwo %>% add_column(cluster = factor(subsetTwoKM$cluster))
+subsetTwoCentroids <- as_tibble(subsetTwoKM$centers, rownames = "cluster")
+fviz_cluster(subsetTwoKM, data = subsetTwo[,2:4], centroids = TRUE, ellipse.type = "norm", 
+             geom = "point", main = "KMeans Dimension Plot")
+
+# Look At Cluster Profiles
+ggplot(pivot_longer(subsetTwoCentroids, 
+                    cols = colnames(subsetTwoKM$centers)), 
+       aes(x = value, y = name, fill = cluster)) +
+  geom_bar(stat = "identity") +
+  facet_grid(rows = vars(cluster)) +
+  scale_fill_viridis_d()
+
+# Visualize Some Data Using Map (K-means)
+subsetTwoClustKMTX <- counties_TX %>% left_join(subsetTwo %>% add_column(cluster = factor(subsetTwoKM$cluster)))
+ggplot(subsetTwoClustKMTX, aes(long, lat)) + 
   geom_polygon(aes(group = group, fill = cluster)) +
   coord_quickmap() + 
   scale_fill_viridis_d(na.value = "gray50") +
-  labs(title = "Clusters - Vaccine Site Data", subtitle = "Note Greyed Out Counties Are Non-Reporting")
+  labs(title = "K-Means Clusters - Subset Two Data", subtitle = "Note Greyed Out Counties Are Non-Reporting or Outliers")
 
 
+
+# SUBSET TWO - HIERARCHICAL CLUSTERING
+
+# Print Table Of dataFinal
+datatable(dataFinal) %>% formatRound(c(5, 9, 10), 2) %>% formatPercentage(11, 2)
+
+# Hierarchical Clustering
+distSubsetTwo <- dist(subsetTwo[,2:4])
+hcSubsetTwo <- hclust(distSubsetTwo, method = "complete")
+fviz_dend(hcSubsetTwo, k = 3)
+fviz_cluster(list(data = subsetTwo[,2:4], cluster = cutree(hcSubsetTwo, k = 3)), choose.vars = c("hispanic_any_race", "sites_per_1k_ppl"), geom = "point")
+
+# Visualize Single-Link Dendrogram
+singleSubsetTwo <- hclust(distSubsetTwo, method = "single")
+fviz_dend(singleSubsetTwo, k = 3)
+
+# Visualize Clustering
+HClustersSubsetTwo <- cutree(hcSubsetTwo, k = 3)
+completeSubsetTwoHC <- subsetTwo[,2:4] %>%
+  add_column(cluster = factor(HClustersSubsetTwo))
+completeSubsetTwoHC
+ggplot(completeSubsetTwoHC, aes(hispanic_any_race, sites_per_1k_ppl, color = cluster)) + geom_point()
+
+# Visualize Some Data Using Map (HC)
+subsetTwoHClustTX <- counties_TX %>% left_join(subsetTwo %>% add_column(cluster = factor(HClustersSubsetTwo)))
+ggplot(subsetTwoHClustTX, aes(long, lat)) + 
+  geom_polygon(aes(group = group, fill = cluster)) +
+  coord_quickmap() + 
+  scale_fill_viridis_d(na.value = "gray50") +
+  labs(title = "Hierarchical Clusters - Subset Two Data", subtitle = "Note Greyed Out Counties Are Non-Reporting or Outliers")
 
 
 
