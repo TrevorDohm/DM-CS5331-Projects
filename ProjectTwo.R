@@ -153,7 +153,6 @@ dataFinal <- dataFinal %>% mutate(county = county_name %>% str_to_lower() %>% st
 
 # Print Table Of Final Data
 datatable(dataFinal) %>% formatRound(c(5, 9, 10), 2) %>% formatPercentage(11, 2)
-pairs(dataFinal[, 2:length(dataFinal) - 1])
 
 
 
