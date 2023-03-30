@@ -63,12 +63,15 @@ purity <- function(cluster, truth) {
 # Read Data
 casesCensus <- read_csv("Datasets/COVID-19_cases_plus_census_recent.csv")
 vaccineInfo <- read_csv("Datasets/County_Vaccine_Information.csv")
+casesDeaths <- read_csv("Datasets/COVID-19_cases_TX_updated.csv")
 
 # Summary Before Manipulation
 summary(casesCensus)
 summary(vaccineInfo)
+summary(casesDeaths)
 sumtable(casesCensus, out = 'htmlreturn')
 sumtable(vaccineInfo, out = 'htmlreturn')
+sumtable(casesDeaths, out = 'htmlreturn')
 
 # Obtain County Names
 counties <- as_tibble(map_data("county"))
@@ -77,6 +80,7 @@ counties_TX <- counties %>% dplyr::filter(region == "texas") %>% rename("county"
 # Data Explorer Code
 plot_intro(casesCensus, title = "Intro Plot for U.S. Covid-19 Cases and Census Dataset")
 plot_intro(vaccineInfo, title = "Intro Plot for Texas County Vaccine Sites Dataset")
+plot_intro(casesDeaths, title = "Intro Plot for Texas Cases And Deaths")
 plot_intro(counties_TX, title = "Intro Plot for Texas County Positions")
 
 # Clean Vaccine Data (Scale, Remove Columns)
@@ -86,58 +90,57 @@ vaccineNumeric <- vaccineInfo %>% select_if(is.numeric) %>% scale() %>% as_tibbl
 vaccineInfo <- vaccineNumeric %>% add_column(vaccineNonNumeric$us_county) %>% 
   rename("us_county" = "vaccineNonNumeric$us_county")
 
-# Clean Census Data (Filter, Scale, Remove Columns, Remove Rows)
-casesCensus <- casesCensus %>% filter(state == "TX") %>% mutate_if(is.character, factor)
-censusNonNumeric <- casesCensus %>% select_if(~!is.numeric(.)) %>% select(1:2)
-censusNumeric <- casesCensus %>% select_if(is.numeric) %>% select(-last_col())
-casesCensus <- censusNumeric %>% add_column(censusNonNumeric$county_name) %>% 
-  rename("county_name" = "censusNonNumeric$county_name") %>% na.omit()
-casesCensus <- casesCensus %>% select_if(is.numeric) %>% mutate(
+# Clean Census Data (Filter, Factor, Remove Obsolete Column, Add New Columns)
+casesCensus <- casesCensus %>% filter(state == "TX") %>% 
+  mutate_if(is.character, factor) %>% select(-last_col()) %>% mutate(
   cases_per_1000 = confirmed_cases / total_pop * 1000, 
   deaths_per_1000 = deaths / total_pop * 1000, 
-  death_per_case = deaths / confirmed_cases) %>%
-  scale() %>% as_tibble() %>% add_column(casesCensus$county_name) %>% 
-  rename("county_name" = "casesCensus$county_name")
+  death_per_case = deaths / confirmed_cases)
 
-# Combine Data, Scale Numerical Data
-combinedData <- casesCensus %>% inner_join(vaccineInfo, by = c('county_name' = 'us_county'))
-combinedDataNumeric <- combinedData %>% select_if(is.numeric) %>% scale() %>% as_tibble()
+# Take Numeric Data, Remove NA To Perform Dimensionality Reduction
+casesCensusUpdated <- casesCensus %>% select_if(is.numeric) %>% 
+  add_column(casesCensus$county_name) %>% 
+  rename("county_name" = "casesCensus$county_name") %>% na.omit()
+
+# Take Numerical Data, Scale
+casesCensusUpdatedNumeric <- casesCensusUpdated %>% select_if(is.numeric) %>% scale() %>% as_tibble()
 
 # Initial Correlation Matrix - Let's Reduce Dimension
-corrMatrix <- cor(combinedDataNumeric)
+corrMatrix <- cor(casesCensusUpdatedNumeric)
 
 # Remove Highly Correlated Variables, Show New Matrix
 corrMatrixRemove <- corrMatrix
 corrMatrixRemove[upper.tri(corrMatrixRemove)] <- 0
 diag(corrMatrixRemove) <- 0
 corrMatrixRemove
-combinedDataNumeric <- combinedDataNumeric[, !apply(corrMatrixRemove, 2, function(x) any(x > 0.95))]
-corrMatrix <- cor(combinedDataNumeric)
+casesCensusUpdatedNumeric <- casesCensusUpdatedNumeric[, !apply(corrMatrixRemove, 2, function(x) any(x > 0.95))]
+corrMatrix <- cor(casesCensusUpdatedNumeric)
 ggcorrplot(corrMatrix, insig = "blank", hc.order = TRUE)
 
 # Perform PCA
-combinedDataNumericPCA <- princomp(corrMatrix)
-summary(combinedDataNumericPCA)
-combinedDataNumericPCA$loadings[, 1:2]
+casesCensusUpdatedNumericPCA <- princomp(corrMatrix)
+summary(casesCensusUpdatedNumericPCA)
+casesCensusUpdatedNumericPCA$loadings[, 1:2]
 
 # Plot PCA Results
-fviz_eig(combinedDataNumericPCA, addlabels = TRUE)
-fviz_pca_var(combinedDataNumericPCA, col.var = "black")
-fviz_cos2(combinedDataNumericPCA, choice = "var", axes = 1:2)
-fviz_pca_var(combinedDataNumericPCA, col.var = "cos2",
+fviz_eig(casesCensusUpdatedNumericPCA, addlabels = TRUE)
+fviz_pca_var(casesCensusUpdatedNumericPCA, col.var = "black")
+fviz_cos2(casesCensusUpdatedNumericPCA, choice = "var", axes = 1:2)
+fviz_pca_var(casesCensusUpdatedNumericPCA, col.var = "cos2",
              gradient.cols = c("black", "orange", "green"), repel = TRUE)
 
 # Box Plot (See Outliers)
-summary(combinedDataNumeric)
-boxplot(combinedDataNumeric)$out
+summary(casesCensusUpdatedNumeric)
+boxplot(casesCensusUpdatedNumeric)$out
 
 # Introduce Country Name Into Dataset
-dataFinal <- combinedDataNumeric %>% add_column(combinedData$county_name) %>% 
-  rename("county_name" = "combinedData$county_name") %>% 
+dataFinal <- casesCensusUpdatedNumeric %>% 
+  add_column(casesCensusUpdated$county_name) %>% 
+  rename("county_name" = "casesCensusUpdated$county_name") %>% 
   select(county_name, everything())
 
 # Outlier Removal
-zScores <- as.data.frame(sapply(combinedDataNumeric, function(data) (abs(data - mean(data)) / sd(data))))
+zScores <- as.data.frame(sapply(casesCensusUpdatedNumeric, function(data) (abs(data - mean(data)) / sd(data))))
 dataFinal <- dataFinal[!rowSums(zScores > 3), ]
 boxplot(dataFinal %>% select(-1))$out
 
@@ -145,14 +148,20 @@ boxplot(dataFinal %>% select(-1))$out
 summary(dataFinal)
 sumtable(dataFinal, out = 'htmlreturn')
 
+# Subset Original Data With Found Features
+casesCensusFinal <- casesCensus %>% select(colnames(dataFinal))
+casesCensusFinal <- casesCensusFinal %>% select_if(is.numeric) %>% 
+  scale() %>% as_tibble() %>% add_column(casesCensus$county_name) %>% 
+  rename("county" = "casesCensus$county_name") %>% 
+  select(county, everything())
+
 # Data Explorer Code
-plot_intro(dataFinal, title = "Intro Plot for Finalized Combined Dataset")
+plot_intro(casesCensusFinal, title = "Intro Plot for Finalized Census Dataset")
+datatable(casesCensusFinal) %>% formatRound(c(5, 9, 10), 2) %>% formatPercentage(11, 2)
+# NOTE: (dataFinal$owner_occupied_housing_units_upper_value_quartile) Has Two NA Values
 
 # Add County Name To Final Data For All Future Map Plots
-dataFinal <- dataFinal %>% mutate(county = county_name %>% str_to_lower() %>% str_replace('\\s+county\\s*$', ''))
-
-# Print Table Of Final Data
-datatable(dataFinal) %>% formatRound(c(5, 9, 10), 2) %>% formatPercentage(11, 2)
+casesCensusFinal <- casesCensusFinal %>% mutate(county = county %>% str_to_lower() %>% str_replace('\\s+county\\s*$', ''))
 
 
 
@@ -161,13 +170,13 @@ datatable(dataFinal) %>% formatRound(c(5, 9, 10), 2) %>% formatPercentage(11, 2)
 # SUBSET ONE - KMEANS
 
 # Cluster With K-Means
-subsetOne <- dataFinal %>% 
-  select(county, median_income, median_age, percent_income_spent_on_rent) 
+subsetOne <- casesCensusFinal %>% 
+  select(county, median_income, median_age, income_per_capita) 
 subsetOne[, 2:length(subsetOne)] %>% scale() %>% as_tibble()
 summary(subsetOne)
 
 # Perform K-Means
-subsetOneKM <- kmeans(subsetOne[, 2:length(subsetOne)], centers = 4)
+subsetOneKM <- kmeans(subsetOne[, 2:length(subsetOne)], centers = 3)
 subsetOneKM
 pairs(subsetOne[, 2:length(subsetOne)], col = subsetOneKM$cluster + 1L)
 
@@ -307,7 +316,7 @@ fviz_dist(distSubsetOne)
 # SUBSET ONE - EXTERNAL VALIDATION
 
 # Prepare Ground Truth
-subsetOneGT <- dataFinal %>% select(county, deaths_per_1000) %>% arrange(desc(deaths_per_1000))
+subsetOneGT <- casesCensusFinal %>% select(county, deaths_per_1000) %>% arrange(desc(deaths_per_1000))
 subsetOneGT$cluster <- factor(case_when(
   subsetOneGT$deaths_per_1000 < -0.5 ~ 3,
   -0.5 <= subsetOneGT$deaths_per_1000 & subsetOneGT$deaths_per_1000 < 0.5 ~ 1,
