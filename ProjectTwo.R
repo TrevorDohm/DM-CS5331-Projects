@@ -149,7 +149,7 @@ summary(dataFinal)
 sumtable(dataFinal, out = 'htmlreturn')
 
 # Subset Original Data With Found Features
-casesCensusFinal <- casesCensus %>% select(colnames(dataFinal))
+casesCensusFinal <- casesCensus %>% select(colnames(dataFinal), 'poverty', 'commuters_by_public_transportation')
 casesCensusFinal <- casesCensusFinal %>% select_if(is.numeric) %>% 
   scale() %>% as_tibble() %>% add_column(casesCensus$county_name) %>% 
   rename("county" = "casesCensus$county_name") %>% 
@@ -171,12 +171,12 @@ casesCensusFinal <- casesCensusFinal %>% mutate(county = county %>% str_to_lower
 
 # Cluster With K-Means
 subsetOne <- casesCensusFinal %>% 
-  select(county, median_income, median_age, income_per_capita) 
+  select(county, median_income, median_age, poverty, commuters_by_public_transportation) 
 subsetOne[, 2:length(subsetOne)] %>% scale() %>% as_tibble()
 summary(subsetOne)
 
 # Perform K-Means
-subsetOneKM <- kmeans(subsetOne[, 2:length(subsetOne)], centers = 3)
+subsetOneKM <- kmeans(subsetOne[, 2:length(subsetOne)], centers = 4)
 subsetOneKM
 pairs(subsetOne[, 2:length(subsetOne)], col = subsetOneKM$cluster + 1L)
 
@@ -201,6 +201,12 @@ ggplot(subsetOneClustKMTX, aes(long, lat)) +
   coord_quickmap() + 
   scale_fill_viridis_d(na.value = "gray50") +
   labs(title = "K-Means Clusters - Subset One Data", subtitle = "Note Greyed Out Counties Are Non-Reporting Or Outliers")
+
+# Gather Information On Which Clusters Are More At Risk
+subsetOneClustersKM <- casesCensus %>% add_column(cluster = factor(subsetOneKM$cluster))
+subsetOneClustersKM %>% group_by(cluster) %>% summarize(
+  avg_cases = mean(cases_per_1000), 
+  avg_deaths = mean(deaths_per_1000))
 
 
 
