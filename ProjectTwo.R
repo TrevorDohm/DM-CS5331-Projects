@@ -116,6 +116,7 @@ dataFinal <- dataFinal %>% mutate(county = county_name %>% str_to_lower() %>% st
 
 # Print Table Of Final Data
 datatable(dataFinal) %>% formatRound(c(5, 9, 10), 2) %>% formatPercentage(11, 2)
+pairs(dataFinal[, 2:length(dataFinal) - 1])
 
 # Calculate Entropy Given Ground Truth
 entropy <- function(cluster, truth) {
@@ -199,8 +200,6 @@ ggplot(subsetOneClustKMTX, aes(long, lat)) +
 
 
 
-
-
 # SUBSET ONE - HIERARCHICAL CLUSTERING
 
 # Use Gap Statistic To Determine Number of Clusters
@@ -238,7 +237,7 @@ pimage(d, order = order(subsetOneKM$cluster), col = bluered(100))
 # fviz_dend(singleSubsetOne, k = 4)
 
 # Visualize Clustering
-HClustersSubsetOne <- cutree(hcSubsetOne, k = 4)
+HClustersSubsetOne <- cutree(hcSubsetOne, k = 3)
 completeSubsetOneHC <- subsetOne[, 2:length(subsetOne)] %>%
   add_column(cluster = factor(HClustersSubsetOne))
 completeSubsetOneHC
@@ -266,6 +265,42 @@ str(db)
 ggplot(subsetOne[, 2:length(subsetOne)] %>% add_column(cluster = factor(db$cluster)),
        aes(median_age, median_income, color = cluster)) + geom_point()
 fviz_cluster(db, subsetOne[, 2:length(subsetOne)], choose.vars = c("median_age", "median_income"), geom = "point")
+
+
+
+# SUBSET ONE - EXTERNAL VALIDATION
+
+subsetOneGT <- dataFinal %>% select(county, deaths_per_1000) %>% arrange(desc(deaths_per_1000))
+subsetOneGT$cluster <- factor(case_when(
+  subsetOneGT$deaths_per_1000 < -0.5 ~ 3,
+  -0.5 <= subsetOneGT$deaths_per_1000 & subsetOneGT$deaths_per_1000 < 0.5 ~ 1,
+  subsetOneGT$deaths_per_1000 >= 0.5 ~ 2
+))
+
+subsetOneGTTX <- counties_TX %>% left_join(subsetOneGT)
+ggplot(subsetOneGTTX, aes(long, lat)) + 
+  geom_polygon(aes(group = group, fill = cluster)) +
+  coord_quickmap() + 
+  scale_fill_viridis_d(na.value = "gray50") +
+  labs(title = "K-Means Clusters - Subset One Data", subtitle = "Note Greyed Out Counties Are Non-Reporting or Outliers")
+
+r <- rbind(
+  kmeans_7 = c(
+    unlist(fpc::cluster.stats(distSubsetOne, as.numeric(subsetOneKM$cluster), as.numeric(subsetOneGT$cluster), compareonly = TRUE)),
+    entropy = entropy(as.numeric(subsetOneKM$cluster), as.numeric(subsetOneGT$cluster)),
+    purity = purity(as.numeric(subsetOneKM$cluster), as.numeric(subsetOneGT$cluster))
+  ),
+  hc_4 = c(
+    unlist(fpc::cluster.stats(distSubsetOne, as.numeric(HClustersSubsetOne), as.numeric(subsetOneGT$cluster), compareonly = TRUE)),
+    entropy = entropy(as.numeric(HClustersSubsetOne), as.numeric(subsetOneGT$cluster)),
+    purity = purity(as.numeric(HClustersSubsetOne), as.numeric(subsetOneGT$cluster))
+  )
+)
+r
+
+
+
+
 
 
 
