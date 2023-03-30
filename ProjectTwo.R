@@ -1,4 +1,6 @@
-# Imports
+# IMPORTS
+
+# library()
 library(tidyverse)
 library(ggplot2)
 library(ggrepel)
@@ -19,8 +21,44 @@ library(FactoMineR)
 library(factoextra)
 library(vtable)
 library(NbClust)
-library(fpc)
 library(seriation)
+
+
+
+
+
+# FUNCTIONS
+
+# Calculate Entropy Given Ground Truth
+entropy <- function(cluster, truth) {
+  k <- max(cluster, truth)
+  cluster <- factor(cluster, levels = 1:k)
+  truth <- factor(truth, levels = 1:k)
+  w <- table(cluster)/length(cluster)
+  cnts <- sapply(split(truth, cluster), table)
+  p <- sweep(cnts, 1, rowSums(cnts), "/")
+  p[is.nan(p)] <- 0
+  e <- -p * log(p, 2)
+  sum(w * rowSums(e, na.rm = TRUE))
+}
+
+# Calculate Purity Given Ground Truth
+purity <- function(cluster, truth) {
+  k <- max(cluster, truth)
+  cluster <- factor(cluster, levels = 1:k)
+  truth <- factor(truth, levels = 1:k)
+  w <- table(cluster)/length(cluster)
+  cnts <- sapply(split(truth, cluster), table)
+  p <- sweep(cnts, 1, rowSums(cnts), "/")
+  p[is.nan(p)] <- 0
+  sum(w * apply(p, 1, max))
+}
+
+
+
+
+
+# DATA CLEANING
 
 # Read Data
 casesCensus <- read_csv("Datasets/COVID-19_cases_plus_census_recent.csv")
@@ -67,7 +105,6 @@ combinedDataNumeric <- combinedData %>% select_if(is.numeric) %>% scale() %>% as
 
 # Initial Correlation Matrix - Let's Reduce Dimension
 corrMatrix <- cor(combinedDataNumeric)
-ggcorrplot(corrMatrix, insig = "blank", hc.order = TRUE)
 
 # Remove Highly Correlated Variables, Show New Matrix
 corrMatrixRemove <- corrMatrix
@@ -118,57 +155,20 @@ dataFinal <- dataFinal %>% mutate(county = county_name %>% str_to_lower() %>% st
 datatable(dataFinal) %>% formatRound(c(5, 9, 10), 2) %>% formatPercentage(11, 2)
 pairs(dataFinal[, 2:length(dataFinal) - 1])
 
-# Calculate Entropy Given Ground Truth
-entropy <- function(cluster, truth) {
-  k <- max(cluster, truth)
-  cluster <- factor(cluster, levels = 1:k)
-  truth <- factor(truth, levels = 1:k)
-  w <- table(cluster)/length(cluster)
-  cnts <- sapply(split(truth, cluster), table)
-  p <- sweep(cnts, 1, rowSums(cnts), "/")
-  p[is.nan(p)] <- 0
-  e <- -p * log(p, 2)
-  sum(w * rowSums(e, na.rm = TRUE))
-}
-
-# Calculate Purity Given Ground Truth
-purity <- function(cluster, truth) {
-  k <- max(cluster, truth)
-  cluster <- factor(cluster, levels = 1:k)
-  truth <- factor(truth, levels = 1:k)
-  w <- table(cluster)/length(cluster)
-  cnts <- sapply(split(truth, cluster), table)
-  p <- sweep(cnts, 1, rowSums(cnts), "/")
-  p[is.nan(p)] <- 0
-  sum(w * apply(p, 1, max))
-}
-
 
 
 
 
 # SUBSET ONE - KMEANS
 
-# Cluster cases_TX With K-Means
+# Cluster With K-Means
 subsetOne <- dataFinal %>% 
-  select(county, median_income, median_age, death_per_case) 
+  select(county, median_income, median_age, percent_income_spent_on_rent) 
 subsetOne[, 2:length(subsetOne)] %>% scale() %>% as_tibble()
 summary(subsetOne)
 
-## We will use different methods and try 1-10 clusters
-set.seed(1234)
-ks <- 2:10
-
-# Find Optimal Number of Clusters for K-Means
-WCSS <- sapply(ks, FUN = function(k) {
-  kmeans(subsetOne[, 2:length(subsetOne)], centers = k, nstart = 5)$tot.withinss
-})
-
-ggplot(as_tibble(WCSS), aes(ks, WCSS)) + geom_line() +
-  geom_vline(xintercept = 3, color = "red", linetype = 2)
-
 # Perform K-Means
-subsetOneKM <- kmeans(subsetOne[, 2:length(subsetOne)], centers = 3)
+subsetOneKM <- kmeans(subsetOne[, 2:length(subsetOne)], centers = 4)
 subsetOneKM
 pairs(subsetOne[, 2:length(subsetOne)], col = subsetOneKM$cluster + 1L)
 
@@ -186,15 +186,13 @@ ggplot(pivot_longer(subsetOneCentroids,
   facet_grid(rows = vars(cluster)) +
   scale_fill_viridis_d()
 
-# Visualize Some Data Using Map (K-means)
+# Visualize Some Data Using Map (K-Means)
 subsetOneClustKMTX <- counties_TX %>% left_join(subsetOne %>% add_column(cluster = factor(subsetOneKM$cluster)))
 ggplot(subsetOneClustKMTX, aes(long, lat)) + 
   geom_polygon(aes(group = group, fill = cluster)) +
   coord_quickmap() + 
   scale_fill_viridis_d(na.value = "gray50") +
-  labs(title = "K-Means Clusters - Subset One Data", subtitle = "Note Greyed Out Counties Are Non-Reporting or Outliers")
-
-
+  labs(title = "K-Means Clusters - Subset One Data", subtitle = "Note Greyed Out Counties Are Non-Reporting Or Outliers")
 
 
 
@@ -202,42 +200,18 @@ ggplot(subsetOneClustKMTX, aes(long, lat)) +
 
 # SUBSET ONE - HIERARCHICAL CLUSTERING
 
-# Use Gap Statistic To Determine Number of Clusters
-gap_stat <- clusGap(subsetOne[, 2:length(subsetOne)], FUN = hcut, K.max = 10, B = 100)
-fviz_gap_stat(gap_stat)
-
 # Hierarchical Clustering
 distSubsetOne <- dist(subsetOne[, 2:length(subsetOne)])
 hcSubsetOne <- hclust(distSubsetOne, method = "complete")
 fviz_dend(hcSubsetOne, k = 4)
 fviz_cluster(list(data = subsetOne[, 2:length(subsetOne)], cluster = cutree(hcSubsetOne, k = 4)), geom = "point")
 
-
-ks <- 2:10
-ASW <- sapply(ks, FUN = function(k) {
-  fpc::cluster.stats(distSubsetOne, kmeans(subsetOne[, 2:length(subsetOne)], centers = k, nstart = 5)$cluster)$avg.silwidth
-})
-ggplot(as_tibble(ASW), aes(ks, ASW)) + geom_line() +
-  geom_vline(xintercept = best_k, color = "red", linetype = 2)
-
-best_k <- ks[which.max(ASW)]
-best_k
-
-fviz_silhouette(silhouette(subsetOneKM$cluster, distSubsetOne))
-kmeans(subsetOne[, 2:length(subsetOne)], centers = 5)
-
-d <- dist(dataFinal[, 2:length(subsetOne)])
-pimage(distSubsetOne, col = bluered(100))
-pimage(d, order = order(subsetOneKM$cluster), col = bluered(100))
-
-
-
 # Visualize Single-Link Dendrogram
-# singleSubsetOne <- hclust(distSubsetOne, method = "single")
-# fviz_dend(singleSubsetOne, k = 4)
+singleSubsetOne <- hclust(distSubsetOne, method = "single")
+fviz_dend(singleSubsetOne, k = 4)
 
 # Visualize Clustering
-HClustersSubsetOne <- cutree(hcSubsetOne, k = 3)
+HClustersSubsetOne <- cutree(hcSubsetOne, k = 4)
 completeSubsetOneHC <- subsetOne[, 2:length(subsetOne)] %>%
   add_column(cluster = factor(HClustersSubsetOne))
 completeSubsetOneHC
@@ -253,30 +227,93 @@ ggplot(subsetOneHClustTX, aes(long, lat)) +
 
 
 
+
+
 # SUBSET ONE - DBSCAN
 
-# DBSCAN
-kNNdistplot(subsetOne[, 2:length(subsetOne)], k = 3)
-abline(h = 0.4, col = "red")
 # Uses Euclidean Distance
-db <- dbscan(subsetOne[, 2:length(subsetOne)], eps = 0.4, minPts = 4)
-db
-str(db)
-ggplot(subsetOne[, 2:length(subsetOne)] %>% add_column(cluster = factor(db$cluster)),
+kNNdistplot(subsetOne[, 2:length(subsetOne)], k = 4)
+abline(h = 1.15, col = "red")
+subsetOneDB <- dbscan(subsetOne[, 2:length(subsetOne)], eps = 1.1, minPts = 5)
+
+# DBSCAN Understanding
+subsetOneDB
+str(subsetOneDB)
+
+# Visualize DBSCAN Plot
+ggplot(subsetOne[, 2:length(subsetOne)] %>% add_column(cluster = factor(subsetOneDB$cluster)),
        aes(median_age, median_income, color = cluster)) + geom_point()
-fviz_cluster(db, subsetOne[, 2:length(subsetOne)], choose.vars = c("median_age", "median_income"), geom = "point")
+fviz_cluster(subsetOneDB, subsetOne[, 2:length(subsetOne)], geom = "point")
+
+
+
+
+
+# SUBSET ONE - INTERNAL VALIDATION
+
+# Set Seed, Number Clusters For Internal Validation
+set.seed(1234)
+ks <- 2:10
+
+# K-Means Cluster Statistics
+fpc::cluster.stats(distSubsetOne, subsetOneKM$cluster)
+
+# Show Important Indices
+sapply(list(
+  KM = subsetOneKM$cluster,
+  completeHC = cutree(hcSubsetOne, k = 4),
+  singleHC = cutree(singleSubsetOne, k = 4)
+), FUN = function(x)
+  fpc::cluster.stats(distSubsetOne, x))[c("within.cluster.ss", "avg.silwidth"), ]
+
+# Silhouette Plots
+plot(silhouette(subsetOneKM$cluster, distSubsetOne))
+fviz_silhouette(silhouette(subsetOneKM$cluster, distSubsetOne))
+
+# Find Optimal Number Clusters For K-Means
+WCSS <- sapply(ks, FUN = function(k) { kmeans(subsetOne[, 2:length(subsetOne)], centers = k, nstart = 5)$tot.withinss })
+ggplot(as_tibble(WCSS), aes(ks, WCSS)) + geom_line() +
+  geom_vline(xintercept = 4, color = "red", linetype = 2)
+
+# Average Silhouette Width
+subsetOneASW <- sapply(ks, FUN = function(k) { fpc::cluster.stats(distSubsetOne, kmeans(subsetOne[, 2:length(subsetOne)], centers = k, nstart = 5)$cluster)$avg.silwidth })
+subsetOneBestK <- ks[which.max(subsetOneASW)]
+subsetOneBestK
+ggplot(as_tibble(subsetOneASW), aes(ks, subsetOneASW)) + geom_line() +
+  geom_vline(xintercept = subsetOneBestK, color = "red", linetype = 2)
+
+# Dunn Index
+subsetOneDI <- sapply(ks, FUN = function(k) { fpc::cluster.stats(distSubsetOne, kmeans(subsetOne[, 2:length(subsetOne)], centers = k, nstart = 5)$cluster)$dunn })
+subsetOneBestK <- ks[which.max(subsetOneDI)]
+subsetOneBestK
+ggplot(as_tibble(subsetOneDI), aes(ks, subsetOneDI)) + geom_line() +
+  geom_vline(xintercept = subsetOneBestK, color = "red", linetype = 2)
+
+# Use Gap Statistic To Determine Number of Clusters
+subsetOneGapStat <- clusGap(subsetOne[, 2:length(subsetOne)], FUN = hcut, K.max = 10, B = 100)
+fviz_gap_stat(subsetOneGapStat)
+
+# Visualize Distance Matrix
+pimage(distSubsetOne, col = bluered(100))
+pimage(distSubsetOne, order = order(subsetOneKM$cluster), col = bluered(100))
+dissplot(distSubsetOne, labels = subsetOneKM$cluster, options = list(main = "K-Means; K = 3"))
+dissplot(distSubsetOne, labels = kmeans(subsetOne[, 2:length(subsetOne)], centers = 3)$cluster, col = bluered(100))
+dissplot(distSubsetOne, labels = kmeans(subsetOne[, 2:length(subsetOne)], centers = 9)$cluster, col = bluered(100))
+fviz_dist(distSubsetOne)
+
+
 
 
 
 # SUBSET ONE - EXTERNAL VALIDATION
 
+# Prepare Ground Truth
 subsetOneGT <- dataFinal %>% select(county, deaths_per_1000) %>% arrange(desc(deaths_per_1000))
 subsetOneGT$cluster <- factor(case_when(
   subsetOneGT$deaths_per_1000 < -0.5 ~ 3,
   -0.5 <= subsetOneGT$deaths_per_1000 & subsetOneGT$deaths_per_1000 < 0.5 ~ 1,
   subsetOneGT$deaths_per_1000 >= 0.5 ~ 2
 ))
-
 subsetOneGTTX <- counties_TX %>% left_join(subsetOneGT)
 ggplot(subsetOneGTTX, aes(long, lat)) + 
   geom_polygon(aes(group = group, fill = cluster)) +
@@ -284,24 +321,20 @@ ggplot(subsetOneGTTX, aes(long, lat)) +
   scale_fill_viridis_d(na.value = "gray50") +
   labs(title = "K-Means Clusters - Subset One Data", subtitle = "Note Greyed Out Counties Are Non-Reporting or Outliers")
 
-r <- rbind(
-  kmeans_7 = c(
+# Call Entropy, Purity Functions
+subsetOneEV <- rbind(
+  KM = c(
     unlist(fpc::cluster.stats(distSubsetOne, as.numeric(subsetOneKM$cluster), as.numeric(subsetOneGT$cluster), compareonly = TRUE)),
     entropy = entropy(as.numeric(subsetOneKM$cluster), as.numeric(subsetOneGT$cluster)),
     purity = purity(as.numeric(subsetOneKM$cluster), as.numeric(subsetOneGT$cluster))
   ),
-  hc_4 = c(
+  HC = c(
     unlist(fpc::cluster.stats(distSubsetOne, as.numeric(HClustersSubsetOne), as.numeric(subsetOneGT$cluster), compareonly = TRUE)),
     entropy = entropy(as.numeric(HClustersSubsetOne), as.numeric(subsetOneGT$cluster)),
     purity = purity(as.numeric(HClustersSubsetOne), as.numeric(subsetOneGT$cluster))
   )
 )
-r
-
-
-
-
-
+subsetOneEV
 
 
 
@@ -309,47 +342,32 @@ r
 
 # SUBSET TWO - KMEANS
 
-# Print Table Of dataFinal
-datatable(dataFinal) %>% formatRound(c(5, 9, 10), 2) %>% formatPercentage(11, 2)
-
-# Cluster cases_TX With K-Means
+# Cluster With K-Means
 subsetTwo <- dataFinal %>% 
-  select(county, hispanic_any_race, sites_per_1k_ppl, death_per_case) 
-subsetTwo[,2:4] %>% scale() %>% as_tibble()
+  select(county, cases_per_1000, deaths_per_1000, sites_per_1k_ppl) 
+subsetTwo[, 2:length(subsetTwo)] %>% scale() %>% as_tibble()
 summary(subsetTwo)
 
-## We will use different methods and try 1-10 clusters.
-set.seed(5678)
-ks <- 2:10
-
-# Find Optimal Number of Clusters for kMeans
-WCSS <- sapply(ks, FUN = function(k) {
-  kmeans(subsetTwo[,2:4], centers = k, nstart = 5)$tot.withinss
-})
-
-ggplot(as_tibble(ks, WCSS), aes(ks, WCSS)) + geom_line() +
-  geom_vline(xintercept = 3, color = "red", linetype = 2)
-
 # Perform K-Means
-subsetTwoKM <- kmeans(subsetTwo[,2:4], centers = 3)
+subsetTwoKM <- kmeans(subsetTwo[, 2:length(subsetTwo)], centers = 3)
 subsetTwoKM
-pairs(subsetTwo[,2:4], col = subsetTwoKM$cluster + 1L)
+pairs(subsetTwo[, 2:length(subsetTwo)], col = subsetTwoKM$cluster + 1L)
 
 # Visualize K-Means Plot
 clustersSubsetTwoKM <- subsetTwo %>% add_column(cluster = factor(subsetTwoKM$cluster))
 subsetTwoCentroids <- as_tibble(subsetTwoKM$centers, rownames = "cluster")
-fviz_cluster(subsetTwoKM, data = subsetTwo[,2:4], centroids = TRUE, ellipse.type = "norm", 
+fviz_cluster(subsetTwoKM, data = subsetTwo[, 2:length(subsetTwo)], centroids = TRUE, ellipse.type = "norm", 
              geom = "point", main = "KMeans Dimension Plot")
 
 # Look At Cluster Profiles
 ggplot(pivot_longer(subsetTwoCentroids, 
-                    cols = colnames(subsetTwoKM$centers)), 
-       aes(x = value, y = name, fill = cluster)) +
+  cols = colnames(subsetTwoKM$centers)), 
+  aes(x = value, y = name, fill = cluster)) +
   geom_bar(stat = "identity") +
   facet_grid(rows = vars(cluster)) +
   scale_fill_viridis_d()
 
-# Visualize Some Data Using Map (K-means)
+# Visualize Some Data Using Map (K-Means)
 subsetTwoClustKMTX <- counties_TX %>% left_join(subsetTwo %>% add_column(cluster = factor(subsetTwoKM$cluster)))
 ggplot(subsetTwoClustKMTX, aes(long, lat)) + 
   geom_polygon(aes(group = group, fill = cluster)) +
@@ -359,20 +377,15 @@ ggplot(subsetTwoClustKMTX, aes(long, lat)) +
 
 
 
+
+
 # SUBSET TWO - HIERARCHICAL CLUSTERING
 
-# Print Table Of dataFinal
-datatable(dataFinal) %>% formatRound(c(5, 9, 10), 2) %>% formatPercentage(11, 2)
-
-# Use Gap Statistic To Determine Number of Clusters
-gap_stat <- clusGap(subsetTwo[,2:4], FUN = hcut, K.max = 10, B = 10)
-fviz_gap_stat(gap_stat)
-
 # Hierarchical Clustering
-distSubsetTwo <- dist(subsetTwo[,2:4])
+distSubsetTwo <- dist(subsetTwo[, 2:length(subsetTwo)])
 hcSubsetTwo <- hclust(distSubsetTwo, method = "complete")
 fviz_dend(hcSubsetTwo, k = 3)
-fviz_cluster(list(data = subsetTwo[,2:4], cluster = cutree(hcSubsetTwo, k = 3)), choose.vars = c("hispanic_any_race", "sites_per_1k_ppl"), geom = "point")
+fviz_cluster(list(data = subsetTwo[, 2:length(subsetTwo)], cluster = cutree(hcSubsetTwo, k = 3)), geom = "point")
 
 # Visualize Single-Link Dendrogram
 singleSubsetTwo <- hclust(distSubsetTwo, method = "single")
@@ -380,10 +393,10 @@ fviz_dend(singleSubsetTwo, k = 3)
 
 # Visualize Clustering
 HClustersSubsetTwo <- cutree(hcSubsetTwo, k = 3)
-completeSubsetTwoHC <- subsetTwo[,2:4] %>%
+completeSubsetTwoHC <- subsetTwo[, 2:length(subsetTwo)] %>%
   add_column(cluster = factor(HClustersSubsetTwo))
 completeSubsetTwoHC
-ggplot(completeSubsetTwoHC, aes(hispanic_any_race, sites_per_1k_ppl, color = cluster)) + geom_point()
+ggplot(completeSubsetTwoHC, aes(cases_per_1000, deaths_per_1000, color = cluster)) + geom_point()
 
 # Visualize Some Data Using Map (HC)
 subsetTwoHClustTX <- counties_TX %>% left_join(subsetTwo %>% add_column(cluster = factor(HClustersSubsetTwo)))
@@ -392,6 +405,123 @@ ggplot(subsetTwoHClustTX, aes(long, lat)) +
   coord_quickmap() + 
   scale_fill_viridis_d(na.value = "gray50") +
   labs(title = "Hierarchical Clusters - Subset Two Data", subtitle = "Note Greyed Out Counties Are Non-Reporting or Outliers")
+
+
+
+
+
+# SUBSET TWO - INTERNAL VALIDATION
+
+# Set Seed, Number Clusters For Internal Validation
+set.seed(1234)
+ks <- 2:10
+
+# K-Means Cluster Statistics
+fpc::cluster.stats(distSubsetTwo, subsetTwoKM$cluster)
+
+# Show Important Indices
+sapply(list(
+  KM = subsetTwoKM$cluster,
+  completeHC = cutree(hcSubsetTwo, k = 4),
+  singleHC = cutree(singleSubsetTwo, k = 4)
+), FUN = function(x)
+  fpc::cluster.stats(distSubsetTwo, x))[c("within.cluster.ss", "avg.silwidth"), ]
+
+# Silhouette Plots
+plot(silhouette(subsetTwoKM$cluster, distSubsetTwo))
+fviz_silhouette(silhouette(subsetTwoKM$cluster, distSubsetTwo))
+
+# Find Optimal Number Clusters For K-Means
+WCSS <- sapply(ks, FUN = function(k) { kmeans(subsetTwo[, 2:length(subsetTwo)], centers = k, nstart = 5)$tot.withinss })
+ggplot(as_tibble(WCSS), aes(ks, WCSS)) + geom_line() +
+  geom_vline(xintercept = 4, color = "red", linetype = 2)
+
+# Average Silhouette Width
+subsetTwoASW <- sapply(ks, FUN = function(k) { fpc::cluster.stats(distSubsetTwo, kmeans(subsetTwo[, 2:length(subsetTwo)], centers = k, nstart = 5)$cluster)$avg.silwidth })
+subsetTwoBestK <- ks[which.max(subsetTwoASW)]
+subsetTwoBestK
+ggplot(as_tibble(subsetTwoASW), aes(ks, subsetTwoASW)) + geom_line() +
+  geom_vline(xintercept = subsetTwoBestK, color = "red", linetype = 2)
+
+# Dunn Index
+subsetTwoDI <- sapply(ks, FUN = function(k) { fpc::cluster.stats(distSubsetTwo, kmeans(subsetTwo[, 2:length(subsetTwo)], centers = k, nstart = 5)$cluster)$dunn })
+subsetTwoBestK <- ks[which.max(subsetTwoDI)]
+subsetTwoBestK
+ggplot(as_tibble(subsetTwoDI), aes(ks, subsetTwoDI)) + geom_line() +
+  geom_vline(xintercept = subsetTwoBestK, color = "red", linetype = 2)
+
+# Use Gap Statistic To Determine Number of Clusters
+subsetTwoGapStat <- clusGap(subsetTwo[, 2:length(subsetTwo)], FUN = hcut, K.max = 10, B = 100)
+fviz_gap_stat(subsetTwoGapStat)
+
+# Visualize Distance Matrix
+pimage(distSubsetTwo, col = bluered(100))
+pimage(distSubsetTwo, order = order(subsetTwoKM$cluster), col = bluered(100))
+dissplot(distSubsetTwo, labels = subsetTwoKM$cluster, options = list(main = "K-Means; K = 3"))
+dissplot(distSubsetTwo, labels = kmeans(subsetTwo[, 2:length(subsetTwo)], centers = 3)$cluster, col = bluered(100))
+dissplot(distSubsetTwo, labels = kmeans(subsetTwo[, 2:length(subsetTwo)], centers = 9)$cluster, col = bluered(100))
+fviz_dist(distSubsetTwo)
+
+
+
+
+
+# SUBSET TWO - EXTERNAL VALIDATION
+
+# Prepare Ground Truth
+subsetTwoGT <- dataFinal %>% select(county, death_per_case) %>% arrange(desc(death_per_case))
+subsetTwoGT$cluster <- factor(case_when(
+  subsetTwoGT$death_per_case < -0.5 ~ 3,
+  -0.5 <= subsetTwoGT$death_per_case & subsetTwoGT$death_per_case < 0.5 ~ 1,
+  subsetTwoGT$death_per_case >= 0.5 ~ 2
+))
+subsetTwoGTTX <- counties_TX %>% left_join(subsetTwoGT)
+ggplot(subsetTwoGTTX, aes(long, lat)) + 
+  geom_polygon(aes(group = group, fill = cluster)) +
+  coord_quickmap() + 
+  scale_fill_viridis_d(na.value = "gray50") +
+  labs(title = "K-Means Clusters - Subset One Data", subtitle = "Note Greyed Out Counties Are Non-Reporting or Outliers")
+
+# Call Entropy, Purity Functions
+subsetTwoEV <- rbind(
+  KM = c(
+    unlist(fpc::cluster.stats(distSubsetTwo, as.numeric(subsetTwoKM$cluster), as.numeric(subsetTwoGT$cluster), compareonly = TRUE)),
+    entropy = entropy(as.numeric(subsetTwoKM$cluster), as.numeric(subsetTwoGT$cluster)),
+    purity = purity(as.numeric(subsetTwoKM$cluster), as.numeric(subsetTwoGT$cluster))
+  ),
+  HC = c(
+    unlist(fpc::cluster.stats(distSubsetTwo, as.numeric(HClustersSubsetTwo), as.numeric(subsetTwoGT$cluster), compareonly = TRUE)),
+    entropy = entropy(as.numeric(HClustersSubsetTwo), as.numeric(subsetTwoGT$cluster)),
+    purity = purity(as.numeric(HClustersSubsetTwo), as.numeric(subsetTwoGT$cluster))
+  )
+)
+subsetTwoEV
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
