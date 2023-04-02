@@ -115,7 +115,7 @@ diag(corrMatrixRemove) <- 0
 corrMatrixRemove
 casesCensusUpdatedNumeric <- casesCensusUpdatedNumeric[, !apply(corrMatrixRemove, 2, function(x) any(x > 0.95))]
 corrMatrix <- cor(casesCensusUpdatedNumeric)
-ggcorrplot(corrMatrix, insig = "blank", hc.order = TRUE)
+ggcorrplot(corrMatrix, insig = "blank", hc.order = TRUE) + ggtitle("Correlation Matrix After Removing Highly Correlated Variables")
 
 # Perform PCA
 casesCensusUpdatedNumericPCA <- princomp(corrMatrix)
@@ -123,15 +123,16 @@ summary(casesCensusUpdatedNumericPCA)
 casesCensusUpdatedNumericPCA$loadings[, 1:2]
 
 # Plot PCA Results
-fviz_eig(casesCensusUpdatedNumericPCA, addlabels = TRUE)
+fviz_eig(casesCensusUpdatedNumericPCA, addlabels = TRUE) + ggtitle("Scree Plot - PCA")
 fviz_pca_var(casesCensusUpdatedNumericPCA, col.var = "black")
-fviz_cos2(casesCensusUpdatedNumericPCA, choice = "var", axes = 1:2)
+fviz_cos2(casesCensusUpdatedNumericPCA, choice = "var", axes = 1:2) + ggtitle("Cos2 of Variables to Dim-1-2 - PCA")
 fviz_pca_var(casesCensusUpdatedNumericPCA, col.var = "cos2",
              gradient.cols = c("black", "orange", "green"), repel = TRUE)
 
 # Box Plot (See Outliers)
 summary(casesCensusUpdatedNumeric)
 boxplot(casesCensusUpdatedNumeric)$out
+title("Box Plot of Normalized Census Data Showing Outliers")
 
 # Introduce Country Name Into Dataset
 dataFinal <- casesCensusUpdatedNumeric %>% 
@@ -143,6 +144,8 @@ dataFinal <- casesCensusUpdatedNumeric %>%
 zScores <- as.data.frame(sapply(casesCensusUpdatedNumeric, function(data) (abs(data - mean(data)) / sd(data))))
 dataFinal <- dataFinal[!rowSums(zScores > 3), ]
 boxplot(dataFinal %>% select(-1))$out
+title("Box Plot of Normalized Census Data After Removing Outliers")
+
 
 # Summary After Manipulation
 summary(dataFinal)
@@ -218,18 +221,18 @@ subsetOneClustersKM %>% group_by(cluster) %>% summarize(
 distSubsetOne <- dist(subsetOne[, 2:length(subsetOne)])
 hcSubsetOne <- hclust(distSubsetOne, method = "complete")
 fviz_dend(hcSubsetOne, k = 4)
-fviz_cluster(list(data = subsetOne[, 2:length(subsetOne)], cluster = cutree(hcSubsetOne, k = 4)), geom = "point")
+fviz_cluster(list(data = subsetOne[, 2:length(subsetOne)], cluster = cutree(hcSubsetOne, k = 4)), geom = "point") + ggtitle("Subset One Hierarchical Clustering Plot")
 
 # Visualize Single-Link Dendrogram
 singleSubsetOne <- hclust(distSubsetOne, method = "single")
-fviz_dend(singleSubsetOne, k = 4)
+fviz_dend(singleSubsetOne, k = 4) + ggtitle("Subset One Hierarchical Clustering Single-Link Dendrogram")
 
 # Visualize Clustering
 HClustersSubsetOne <- cutree(hcSubsetOne, k = 4)
 completeSubsetOneHC <- subsetOne[, 2:length(subsetOne)] %>%
   add_column(cluster = factor(HClustersSubsetOne))
 completeSubsetOneHC
-ggplot(completeSubsetOneHC, aes(median_age, median_income, color = cluster)) + geom_point()
+ggplot(completeSubsetOneHC, aes(median_age, median_income, color = cluster)) + geom_point() + ggtitle("Subset One Hierarchical Clustering Complete-linkage Plot")
 
 # Visualize Some Data Using Map (HC)
 subsetOneHClustTX <- counties_TX %>% left_join(subsetOne %>% add_column(cluster = factor(HClustersSubsetOne)))
@@ -237,7 +240,7 @@ ggplot(subsetOneHClustTX, aes(long, lat)) +
   geom_polygon(aes(group = group, fill = cluster)) +
   coord_quickmap() + 
   scale_fill_viridis_d(na.value = "gray50") +
-  labs(title = "Hierarchical Clusters - Subset One Data", subtitle = "Note Greyed Out Counties Are Non-Reporting or Outliers")
+  labs(title = "Hierarchical Clusters - Subset One Data", subtitle = "Note Greyed Out Counties Are Non-Reporting")
 
 
 
@@ -256,8 +259,8 @@ str(subsetOneDB)
 
 # Visualize DBSCAN Plot
 ggplot(subsetOne[, 2:length(subsetOne)] %>% add_column(cluster = factor(subsetOneDB$cluster)),
-       aes(median_age, median_income, color = cluster)) + geom_point()
-fviz_cluster(subsetOneDB, subsetOne[, 2:length(subsetOne)], geom = "point")
+       aes(median_age, median_income, color = cluster)) + geom_point() + ggtitle("Subset One DBSCAN Clustering Plot")
+fviz_cluster(subsetOneDB, subsetOne[, 2:length(subsetOne)], geom = "point") + ggtitle("Subset One DBSCAN Clustering Plot")
 
 
 
