@@ -185,7 +185,6 @@ casesCensus2Final <- casesCensus2Final %>% mutate(county = county %>% str_to_low
 
 
 
-
 # SUBSET ONE - KMEANS
 
 # Cluster With K-Means
@@ -382,9 +381,12 @@ subsetOneEV
 
 # Cluster With K-Means
 subsetTwo <- casesCensusFinal %>% 
-  select(county, median_income, poverty, commuters_by_public_transportation) 
+  select(county, death_per_case, owner_occupied_housing_units_upper_value_quartile, gini_index) 
 subsetTwo[, 2:length(subsetTwo)] %>% scale() %>% as_tibble()
 summary(subsetTwo)
+
+# take out NAs
+subsetTwo <- subsetTwo %>% na.omit()
 
 # Perform K-Means
 subsetTwoKM <- kmeans(subsetTwo[, 2:length(subsetTwo)], centers = 3)
@@ -394,7 +396,7 @@ pairs(subsetTwo[, 2:length(subsetTwo)], col = subsetTwoKM$cluster + 1L, main = "
 # Visualize K-Means Plot
 clusterssubsetTwoKM <- subsetTwo %>% add_column(cluster = factor(subsetTwoKM$cluster))
 subsetTwoCentroids <- as_tibble(subsetTwoKM$centers, rownames = "cluster")
-fviz_cluster(subsetTwoKM, data = subsetTwo[, 2:length(subsetTwo)], centroids = TRUE, ellipse.type = "norm", 
+fviz_cluster(subsetTwoKM, data = subsetTwoNoNA[, 2:length(subsetTwoNoNA)], centroids = TRUE, ellipse.type = "norm", 
              geom = "point", main = "Subset Two KMeans Dimension Plot")
 
 # Look At Cluster Profiles
@@ -415,7 +417,8 @@ ggplot(subsetTwoClustKMTX, aes(long, lat)) +
   labs(title = "K-Means Clusters - Subset Two Data", subtitle = "Note Greyed Out Counties Are Non-Reporting")
 
 # Gather Information On Which Clusters Are More At Risk
-subsetTwoClustersKM <- casesCensus %>% add_column(cluster = factor(subsetTwoKM$cluster))
+casesCensusEdit <- subset(casesCensus,!is.na(casesCensus$owner_occupied_housing_units_upper_value_quartile) )
+subsetTwoClustersKM <- casesCensusEdit %>% add_column(cluster = factor(subsetTwoKM$cluster))
 subsetTwoClustersKM %>% group_by(cluster) %>% summarize(
   avg_cases = mean(cases_per_1000), 
   avg_deaths = mean(deaths_per_1000))
@@ -441,8 +444,8 @@ HClusterssubsetTwo <- cutree(hcsubsetTwo, k = 4)
 completesubsetTwoHC <- subsetTwo[, 2:length(subsetTwo)] %>%
   add_column(cluster = factor(HClusterssubsetTwo))
 completesubsetTwoHC
-ggplot(completesubsetTwoHC, aes(poverty, median_income, color = cluster)) + geom_point() + ggtitle("Subset Two Hierarchical Clustering Complete-linkage Plot")
-ggplot(completesubsetTwoHC, aes(commuters_by_public_transportation, median_income, color = cluster)) + geom_point() + ggtitle("Subset Two Hierarchical Clustering Complete-linkage Plot")
+ggplot(completesubsetTwoHC, aes(gini_index, death_per_case, color = cluster)) + geom_point() + ggtitle("Subset Two Hierarchical Clustering Complete-linkage Plot")
+ggplot(completesubsetTwoHC, aes(owner_occupied_housing_units_upper_value_quartile, death_per_case, color = cluster)) + geom_point() + ggtitle("Subset Two Hierarchical Clustering Complete-linkage Plot")
 
 
 # Visualize Some Data Using Map (HC)
@@ -471,7 +474,7 @@ str(subsetTwoDB)
 
 # Visualize DBSCAN Plot
 ggplot(subsetTwo[, 2:length(subsetTwo)] %>% add_column(cluster = factor(subsetTwoDB$cluster)),
-       aes(poverty, median_income, color = cluster)) + geom_point() + ggtitle("Subset Two DBSCAN Clustering Plot")
+       aes(gini_index, death_per_case, color = cluster)) + geom_point() + ggtitle("Subset Two DBSCAN Clustering Plot")
 fviz_cluster(subsetTwoDB, subsetTwo[, 2:length(subsetTwo)], geom = "point") + ggtitle("Subset Two DBSCAN Clustering Plot")
 
 
@@ -502,7 +505,7 @@ fviz_silhouette(silhouette(subsetTwoKM$cluster, distsubsetTwo))
 # Find Optimal Number Clusters For K-Means
 WCSS <- sapply(ks, FUN = function(k) { kmeans(subsetTwo[, 2:length(subsetTwo)], centers = k, nstart = 5)$tot.withinss })
 ggplot(as_tibble(WCSS), aes(ks, WCSS)) + geom_line() +
-  geom_vline(xintercept = 3, color = "red", linetype = 2) + ggtitle("Elbox Method: Optimal Number of Clusters")
+  geom_vline(xintercept = 4, color = "red", linetype = 2) + ggtitle("Elbox Method: Optimal Number of Clusters")
 
 # Average Silhouette Width
 subsetTwoASW <- sapply(ks, FUN = function(k) { fpc::cluster.stats(distsubsetTwo, kmeans(subsetTwo[, 2:length(subsetTwo)], centers = k, nstart = 5)$cluster)$avg.silwidth })
@@ -548,7 +551,7 @@ ggplot(subsetTwoGTTX, aes(long, lat)) +
   geom_polygon(aes(group = group, fill = cluster)) +
   coord_quickmap() + 
   scale_fill_viridis_d(na.value = "gray50") +
-  labs(title = "K-Means Clusters - Subset One Ground Truth", subtitle = "Note Greyed Out Counties Are Non-Reporting")
+  labs(title = "K-Means Clusters - Subset Two Ground Truth", subtitle = "Note Greyed Out Counties Are Non-Reporting")
 
 # Call Entropy, Purity Functions
 subsetTwoEV <- rbind(
