@@ -181,13 +181,13 @@ summary(subsetOne)
 # Perform K-Means
 subsetOneKM <- kmeans(subsetOne[, 2:length(subsetOne)], centers = 4)
 subsetOneKM
-pairs(subsetOne[, 2:length(subsetOne)], col = subsetOneKM$cluster + 1L)
+pairs(subsetOne[, 2:length(subsetOne)], col = subsetOneKM$cluster + 1L, main = "Subset One Pairs Plot")
 
 # Visualize K-Means Plot
 clustersSubsetOneKM <- subsetOne %>% add_column(cluster = factor(subsetOneKM$cluster))
 subsetOneCentroids <- as_tibble(subsetOneKM$centers, rownames = "cluster")
 fviz_cluster(subsetOneKM, data = subsetOne[, 2:length(subsetOne)], centroids = TRUE, ellipse.type = "norm", 
-             geom = "point", main = "KMeans Dimension Plot")
+             geom = "point", main = "Subset One KMeans Dimension Plot")
 
 # Look At Cluster Profiles
 ggplot(pivot_longer(subsetOneCentroids, 
@@ -195,7 +195,8 @@ ggplot(pivot_longer(subsetOneCentroids,
   aes(x = value, y = name, fill = cluster)) +
   geom_bar(stat = "identity") +
   facet_grid(rows = vars(cluster)) +
-  scale_fill_viridis_d()
+  scale_fill_viridis_d() +
+  ggtitle("Subset One K-Means Cluster Profiles")
 
 # Visualize Some Data Using Map (K-Means)
 subsetOneClustKMTX <- counties_TX %>% left_join(subsetOne %>% add_column(cluster = factor(subsetOneKM$cluster)))
@@ -203,7 +204,7 @@ ggplot(subsetOneClustKMTX, aes(long, lat)) +
   geom_polygon(aes(group = group, fill = cluster)) +
   coord_quickmap() + 
   scale_fill_viridis_d(na.value = "gray50") +
-  labs(title = "K-Means Clusters - Subset One Data", subtitle = "Note Greyed Out Counties Are Non-Reporting Or Outliers")
+  labs(title = "K-Means Clusters - Subset One Data", subtitle = "Note Greyed Out Counties Are Non-Reporting")
 
 # Gather Information On Which Clusters Are More At Risk
 subsetOneClustersKM <- casesCensus %>% add_column(cluster = factor(subsetOneKM$cluster))
@@ -251,6 +252,7 @@ ggplot(subsetOneHClustTX, aes(long, lat)) +
 # Uses Euclidean Distance
 kNNdistplot(subsetOne[, 2:length(subsetOne)], k = 4)
 abline(h = 1.15, col = "red")
+title("Subset One Elbow Method for DBSCAN")
 subsetOneDB <- dbscan(subsetOne[, 2:length(subsetOne)], eps = 1.1, minPts = 5)
 
 # DBSCAN Understanding
@@ -290,25 +292,25 @@ fviz_silhouette(silhouette(subsetOneKM$cluster, distSubsetOne))
 # Find Optimal Number Clusters For K-Means
 WCSS <- sapply(ks, FUN = function(k) { kmeans(subsetOne[, 2:length(subsetOne)], centers = k, nstart = 5)$tot.withinss })
 ggplot(as_tibble(WCSS), aes(ks, WCSS)) + geom_line() +
-  geom_vline(xintercept = 4, color = "red", linetype = 2)
+  geom_vline(xintercept = 4, color = "red", linetype = 2) + ggtitle("Elbox Method: Optimal Number of Clusters")
 
 # Average Silhouette Width
 subsetOneASW <- sapply(ks, FUN = function(k) { fpc::cluster.stats(distSubsetOne, kmeans(subsetOne[, 2:length(subsetOne)], centers = k, nstart = 5)$cluster)$avg.silwidth })
 subsetOneBestK <- ks[which.max(subsetOneASW)]
 subsetOneBestK
 ggplot(as_tibble(subsetOneASW), aes(ks, subsetOneASW)) + geom_line() +
-  geom_vline(xintercept = subsetOneBestK, color = "red", linetype = 2)
+  geom_vline(xintercept = subsetOneBestK, color = "red", linetype = 2) + ggtitle("Average Silhouette Width: Optimate Number of Clusters")
 
 # Dunn Index
 subsetOneDI <- sapply(ks, FUN = function(k) { fpc::cluster.stats(distSubsetOne, kmeans(subsetOne[, 2:length(subsetOne)], centers = k, nstart = 5)$cluster)$dunn })
 subsetOneBestK <- ks[which.max(subsetOneDI)]
 subsetOneBestK
 ggplot(as_tibble(subsetOneDI), aes(ks, subsetOneDI)) + geom_line() +
-  geom_vline(xintercept = subsetOneBestK, color = "red", linetype = 2)
+  geom_vline(xintercept = subsetOneBestK, color = "red", linetype = 2) + ggtitle("Dunn Index: Optimal Number of Clusters")
 
 # Use Gap Statistic To Determine Number of Clusters
 subsetOneGapStat <- clusGap(subsetOne[, 2:length(subsetOne)], FUN = hcut, K.max = 10, B = 100)
-fviz_gap_stat(subsetOneGapStat)
+fviz_gap_stat(subsetOneGapStat) + ggtitle("Gap Statistic: Optimal Number of Clusters")
 
 # Visualize Distance Matrix
 pimage(distSubsetOne, col = bluered(100))
@@ -336,7 +338,7 @@ ggplot(subsetOneGTTX, aes(long, lat)) +
   geom_polygon(aes(group = group, fill = cluster)) +
   coord_quickmap() + 
   scale_fill_viridis_d(na.value = "gray50") +
-  labs(title = "K-Means Clusters - Subset One Data", subtitle = "Note Greyed Out Counties Are Non-Reporting or Outliers")
+  labs(title = "K-Means Clusters - Subset One Ground Truth", subtitle = "Note Greyed Out Counties Are Non-Reporting")
 
 # Call Entropy, Purity Functions
 subsetOneEV <- rbind(
@@ -361,7 +363,7 @@ subsetOneEV
 
 # Cluster With K-Means
 subsetTwo <- dataFinal %>% 
-  select(county, cases_per_1000, deaths_per_1000, sites_per_1k_ppl) 
+  select(county_name, cases_per_1000, deaths_per_1000, gini_index) 
 subsetTwo[, 2:length(subsetTwo)] %>% scale() %>% as_tibble()
 summary(subsetTwo)
 
