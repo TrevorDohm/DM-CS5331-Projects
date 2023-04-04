@@ -175,7 +175,7 @@ casesCensus2Final <- casesCensus2Final %>% select_if(is.numeric) %>%
   select(county, everything())
 
 # Data Explorer Code
-plot_intro(casesCensus2Final, title = "Intro Plot for Finalized Censu2 Dataset")
+plot_intro(casesCensus2Final, title = "Intro Plot for Finalized Census Dataset")
 datatable(casesCensus2Final) %>% formatRound(c(5, 9, 10), 2) %>% formatPercentage(11, 2)
 # NOTE: (dataFinal$owner_occupied_housing_units_upper_value_quartile) Has Two NA Values
 
@@ -309,7 +309,7 @@ fviz_silhouette(silhouette(subsetOneKM$cluster, distSubsetOne))
 # Find Optimal Number Clusters For K-Means
 WCSS <- sapply(ks, FUN = function(k) { kmeans(subsetOne[, 2:length(subsetOne)], centers = k, nstart = 5)$tot.withinss })
 ggplot(as_tibble(WCSS), aes(ks, WCSS)) + geom_line() +
-  geom_vline(xintercept = 5, color = "red", linetype = 2) + ggtitle("Elbox Method: Optimal Number of Clusters")
+  geom_vline(xintercept = 5, color = "red", linetype = 2) + ggtitle("Elbow Method: Optimal Number of Clusters")
 
 # Average Silhouette Width
 subsetOneASW <- sapply(ks, FUN = function(k) { fpc::cluster.stats(distSubsetOne, kmeans(subsetOne[, 2:length(subsetOne)], centers = k, nstart = 5)$cluster)$avg.silwidth })
@@ -385,7 +385,7 @@ subsetTwo <- casesCensusFinal %>%
 subsetTwo[, 2:length(subsetTwo)] %>% scale() %>% as_tibble()
 summary(subsetTwo)
 
-# take out NAs
+# Take Out NA Values
 subsetTwo <- subsetTwo %>% na.omit()
 
 # Perform K-Means
@@ -396,7 +396,7 @@ pairs(subsetTwo[, 2:length(subsetTwo)], col = subsetTwoKM$cluster + 1L, main = "
 # Visualize K-Means Plot
 clusterssubsetTwoKM <- subsetTwo %>% add_column(cluster = factor(subsetTwoKM$cluster))
 subsetTwoCentroids <- as_tibble(subsetTwoKM$centers, rownames = "cluster")
-fviz_cluster(subsetTwoKM, data = subsetTwoNoNA[, 2:length(subsetTwoNoNA)], centroids = TRUE, ellipse.type = "norm", 
+fviz_cluster(subsetTwoKM, data = subsetTwo[, 2:length(subsetTwo)], centroids = TRUE, ellipse.type = "norm", 
              geom = "point", main = "Subset Two KMeans Dimension Plot")
 
 # Look At Cluster Profiles
