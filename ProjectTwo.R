@@ -598,7 +598,7 @@ vaccineInfoCluster5 <- filter(vaccineInfoSubsetOne, cluster==5)
 summary(vaccineInfoCluster5$sites_per_1k_ppl) # mean -0.22
 
 # Subset one's cluster 3 did the best in providing vaccine sites
-# cluster 1 did the worst. 
+# cluster 1 did the worst.
 
 
 
@@ -616,8 +616,8 @@ summary(vaccineInfo2Cluster2$sites_per_1k_ppl) # mean 0.40
 vaccineInfo2Cluster3 <- filter(vaccineInfoSubsetTwo, cluster==3)
 summary(vaccineInfo2Cluster3$sites_per_1k_ppl) # mean 0.02
 
-# Subset two's cluster 3 did the best in providing vaccine sites
-# cluster 2 did the worst. 
+# Subset two's cluster 2 did the best in providing vaccine sites
+# cluster 1 did the worst. 
 
 
 
