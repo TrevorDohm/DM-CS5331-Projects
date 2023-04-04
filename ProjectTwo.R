@@ -583,9 +583,22 @@ subsetOneClustersKM %>% group_by(cluster) %>% summarize(
 
 vaccineInfo <- vaccineInfo %>% mutate(us_county = us_county %>% str_to_lower() %>% str_replace('\\s+county\\s*$', ''))
 vaccineInfo <- vaccineInfo %>% rename("county" = "us_county") 
-vaccineInfo <- vaccineInfo %>% filter(vaccineInfo, cluster==2)
+vaccineInfoSubsetOne <- vaccineInfo %>% left_join( clustersSubsetOneKM, 
+                             by=c('county'))
 
+vaccineInfoCluster1 <- filter(vaccineInfoSubsetOne, cluster==1)
+summary(vaccineInfoCluster1$sites_per_1k_ppl) # mean -0.21
+vaccineInfoCluster2 <- filter(vaccineInfoSubsetOne, cluster==2)
+summary(vaccineInfoCluster2$sites_per_1k_ppl) # mean -0.18
+vaccineInfoCluster3 <- filter(vaccineInfoSubsetOne, cluster==3)
+summary(vaccineInfoCluster3$sites_per_1k_ppl) # mean 0.51
+vaccineInfoCluster4 <- filter(vaccineInfoSubsetOne, cluster==4)
+summary(vaccineInfoCluster4$sites_per_1k_ppl) # mean 0.19
+vaccineInfoCluster5 <- filter(vaccineInfoSubsetOne, cluster==5)
+summary(vaccineInfoCluster5$sites_per_1k_ppl) # mean -0.22
 
+# Subset one's cluster 3 did the best in providing vaccine sites
+# cluster 1 did the worst.
 
 
 
@@ -593,7 +606,18 @@ subsetTwoClustersKM %>% group_by(cluster) %>% summarize(
   avg_cases = mean(cases_per_1000), 
   avg_deaths = mean(deaths_per_1000))
 
+vaccineInfoSubsetTwo <- vaccineInfo %>% left_join( clusterssubsetTwoKM, 
+                                          by=c('county'))
 
+vaccineInfo2Cluster1 <- filter(vaccineInfoSubsetTwo, cluster==1)
+summary(vaccineInfo2Cluster1$sites_per_1k_ppl) # mean -0.21
+vaccineInfo2Cluster2 <- filter(vaccineInfoSubsetTwo, cluster==2)
+summary(vaccineInfo2Cluster2$sites_per_1k_ppl) # mean 0.40
+vaccineInfo2Cluster3 <- filter(vaccineInfoSubsetTwo, cluster==3)
+summary(vaccineInfo2Cluster3$sites_per_1k_ppl) # mean 0.02
+
+# Subset two's cluster 2 did the best in providing vaccine sites
+# cluster 1 did the worst. 
 
 
 
