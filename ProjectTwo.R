@@ -344,18 +344,18 @@ fviz_dist(distSubsetOne)
 # SUBSET ONE - EXTERNAL VALIDATION
 
 # Prepare Ground Truth
-subsetOneGT <- casesCensusFinal %>% select(county, deaths_per_1000) %>% arrange(desc(deaths_per_1000))
+subsetOneGT <- casesCensusFinal %>% select(county, income_per_capita) %>% arrange(desc(income_per_capita))
 subsetOneGT$cluster <- factor(case_when(
-  subsetOneGT$deaths_per_1000 < -0.5 ~ 3,
-  -0.5 <= subsetOneGT$deaths_per_1000 & subsetOneGT$deaths_per_1000 < 0.5 ~ 1,
-  subsetOneGT$deaths_per_1000 >= 0.5 ~ 2
+  subsetOneGT$income_per_capita < -0.5 ~ 3,
+  -0.5 <= subsetOneGT$income_per_capita & subsetOneGT$income_per_capita < 0.5 ~ 1,
+  subsetOneGT$income_per_capita >= 0.5 ~ 2
 ))
 subsetOneGTTX <- counties_TX %>% left_join(subsetOneGT)
 ggplot(subsetOneGTTX, aes(long, lat)) + 
   geom_polygon(aes(group = group, fill = cluster)) +
   coord_quickmap() + 
   scale_fill_viridis_d(na.value = "gray50") +
-  labs(title = "K-Means Clusters - Subset Two Ground Truth", subtitle = "Note Greyed Out Counties Are Non-Reporting")
+  labs(title = "K-Means Clusters - Subset One Ground Truth", subtitle = "Note Greyed Out Counties Are Non-Reporting")
 
 # Call Entropy, Purity Functions
 subsetOneEV <- rbind(
@@ -437,7 +437,7 @@ fviz_cluster(list(data = subsetTwo[, 2:length(subsetTwo)], cluster = cutree(hcsu
 
 # Visualize Single-Link Dendrogram
 singlesubsetTwo <- hclust(distsubsetTwo, method = "single")
-fviz_dend(singlesubsetTwo, k = 4) + ggtitle("Subset Twp Hierarchical Clustering Single-Link Dendrogram")
+fviz_dend(singlesubsetTwo, k = 4) + ggtitle("Subset Two Hierarchical Clustering Single-Link Dendrogram")
 
 # Visualize Clustering
 HClusterssubsetTwo <- cutree(hcsubsetTwo, k = 4)
@@ -541,6 +541,9 @@ fviz_dist(distsubsetTwo)
 
 # Prepare Ground Truth
 subsetTwoGT <- casesCensusFinal %>% select(county, deaths_per_1000) %>% arrange(desc(deaths_per_1000))
+
+subsetTwoGT <- subsetTwoGT[!(subsetTwoGT$county %in% c("kenedy","king")),]
+
 subsetTwoGT$cluster <- factor(case_when(
   subsetTwoGT$deaths_per_1000 < -0.5 ~ 3,
   -0.5 <= subsetTwoGT$deaths_per_1000 & subsetTwoGT$deaths_per_1000 < 0.5 ~ 1,
@@ -567,6 +570,28 @@ subsetTwoEV <- rbind(
   )
 )
 subsetTwoEV
+
+
+
+
+
+
+# COMPARE RESPONSE TO VACCINE 
+subsetOneClustersKM %>% group_by(cluster) %>% summarize(
+  avg_cases = mean(cases_per_1000), 
+  avg_deaths = mean(deaths_per_1000))
+
+vaccineInfo <- vaccineInfo %>% mutate(us_county = us_county %>% str_to_lower() %>% str_replace('\\s+county\\s*$', ''))
+vaccineInfo <- vaccineInfo %>% rename("county" = "us_county") 
+vaccineInfo <- vaccineInfo %>% filter(vaccineInfo, cluster==2)
+
+
+
+
+
+subsetTwoClustersKM %>% group_by(cluster) %>% summarize(
+  avg_cases = mean(cases_per_1000), 
+  avg_deaths = mean(deaths_per_1000))
 
 
 
