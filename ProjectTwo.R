@@ -542,14 +542,14 @@ fviz_dist(distsubsetTwo)
 # SUBSET TWO - EXTERNAL VALIDATION
 
 # Prepare Ground Truth
-subsetTwoGT <- casesCensusFinal %>% select(county, deaths_per_1000) %>% arrange(desc(deaths_per_1000))
+subsetTwoGT <- casesCensusFinal %>% select(county, death_per_case) %>% arrange(desc(death_per_case))
 
 subsetTwoGT <- subsetTwoGT[!(subsetTwoGT$county %in% c("kenedy","king")),]
 
 subsetTwoGT$cluster <- factor(case_when(
-  subsetTwoGT$deaths_per_1000 < -0.5 ~ 3,
-  -0.5 <= subsetTwoGT$deaths_per_1000 & subsetTwoGT$deaths_per_1000 < 0.5 ~ 1,
-  subsetTwoGT$deaths_per_1000 >= 0.5 ~ 2
+  subsetTwoGT$death_per_case < -0.3 ~ 3,
+  -0.3 <= subsetTwoGT$death_per_case & subsetTwoGT$death_per_case < 1.20 ~ 1,
+  subsetTwoGT$death_per_case >= 1.20 ~ 2
 ))
 subsetTwoGTTX <- counties_TX %>% left_join(subsetTwoGT)
 ggplot(subsetTwoGTTX, aes(long, lat)) + 
