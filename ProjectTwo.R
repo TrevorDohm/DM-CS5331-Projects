@@ -383,7 +383,7 @@ subsetOneEV
 
 # Cluster With K-Means
 subsetTwo <- casesCensusFinal %>% 
-  select(county, death_per_case, owner_occupied_housing_units_upper_value_quartile, gini_index) 
+  select(county, income_per_capita, owner_occupied_housing_units_upper_value_quartile, gini_index) 
 subsetTwo[, 2:length(subsetTwo)] %>% scale() %>% as_tibble()
 summary(subsetTwo)
 
@@ -467,7 +467,7 @@ ggplot(subsetTwoHClustTX, aes(long, lat)) +
 # Uses Euclidean Distance
 kNNdistplot(subsetTwo[, 2:length(subsetTwo)], k = 4)
 abline(h = 1.15, col = "red")
-title("Subset One Elbow Method for DBSCAN")
+title("Subset Two Elbow Method for DBSCAN")
 subsetTwoDB <- dbscan(subsetTwo[, 2:length(subsetTwo)], eps = 1.1, minPts = 5)
 
 # DBSCAN Understanding
@@ -507,7 +507,7 @@ fviz_silhouette(silhouette(subsetTwoKM$cluster, distsubsetTwo))
 # Find Optimal Number Clusters For K-Means
 WCSS <- sapply(ks, FUN = function(k) { kmeans(subsetTwo[, 2:length(subsetTwo)], centers = k, nstart = 5)$tot.withinss })
 ggplot(as_tibble(WCSS), aes(ks, WCSS)) + geom_line() +
-  geom_vline(xintercept = 4, color = "red", linetype = 2) + ggtitle("Elbox Method: Optimal Number of Clusters")
+  geom_vline(xintercept = 4, color = "red", linetype = 2) + ggtitle("Elbow Method: Optimal Number of Clusters")
 
 # Average Silhouette Width
 subsetTwoASW <- sapply(ks, FUN = function(k) { fpc::cluster.stats(distsubsetTwo, kmeans(subsetTwo[, 2:length(subsetTwo)], centers = k, nstart = 5)$cluster)$avg.silwidth })
