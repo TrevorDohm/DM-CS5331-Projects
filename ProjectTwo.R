@@ -344,11 +344,13 @@ fviz_dist(distSubsetOne)
 # SUBSET ONE - EXTERNAL VALIDATION
 
 # Prepare Ground Truth
-subsetOneGT <- casesCensusFinal %>% select(county, income_per_capita) %>% arrange(desc(income_per_capita))
+subsetOneGT <- casesCensusFinal %>% select(county, death_per_case) %>% arrange(desc(death_per_case))
 subsetOneGT$cluster <- factor(case_when(
-  subsetOneGT$income_per_capita < -0.5 ~ 3,
-  -0.5 <= subsetOneGT$income_per_capita & subsetOneGT$income_per_capita < 0.5 ~ 1,
-  subsetOneGT$income_per_capita >= 0.5 ~ 2
+  subsetOneGT$death_per_case < -0.66 ~ 5,
+  -0.66 <= subsetOneGT$death_per_case & subsetOneGT$death_per_case < -0.3 ~ 4,
+  -0.3 <= subsetOneGT$death_per_case & subsetOneGT$death_per_case < 0.2 ~ 3,
+  0.2 <= subsetOneGT$death_per_case & subsetOneGT$death_per_case < 0.45 ~ 2,
+  subsetOneGT$death_per_case >= 0.45 ~ 1
 ))
 subsetOneGTTX <- counties_TX %>% left_join(subsetOneGT)
 ggplot(subsetOneGTTX, aes(long, lat)) + 
