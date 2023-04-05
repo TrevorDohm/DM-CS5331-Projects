@@ -589,15 +589,15 @@ vaccineInfoSubsetOne <- vaccineInfo %>% left_join( clustersSubsetOneKM,
                              by=c('county'))
 
 vaccineInfoCluster1 <- filter(vaccineInfoSubsetOne, cluster==1)
-summary(vaccineInfoCluster1$sites_per_1k_ppl) # mean -0.21
+summary(vaccineInfoCluster1$sites_per_1k_ppl)
 vaccineInfoCluster2 <- filter(vaccineInfoSubsetOne, cluster==2)
-summary(vaccineInfoCluster2$sites_per_1k_ppl) # mean -0.18
+summary(vaccineInfoCluster2$sites_per_1k_ppl)
 vaccineInfoCluster3 <- filter(vaccineInfoSubsetOne, cluster==3)
-summary(vaccineInfoCluster3$sites_per_1k_ppl) # mean 0.51
+summary(vaccineInfoCluster3$sites_per_1k_ppl)
 vaccineInfoCluster4 <- filter(vaccineInfoSubsetOne, cluster==4)
-summary(vaccineInfoCluster4$sites_per_1k_ppl) # mean 0.19
+summary(vaccineInfoCluster4$sites_per_1k_ppl)
 vaccineInfoCluster5 <- filter(vaccineInfoSubsetOne, cluster==5)
-summary(vaccineInfoCluster5$sites_per_1k_ppl) # mean -0.22
+summary(vaccineInfoCluster5$sites_per_1k_ppl)
 
 # Simple Horizontal Bar Plot with Added Labels
 counts <- table(vaccineInfoSubsetOne$cluster)
@@ -630,11 +630,11 @@ vaccineInfoSubsetTwo <- vaccineInfo %>% left_join( clusterssubsetTwoKM,
                                           by=c('county'))
 
 vaccineInfo2Cluster1 <- filter(vaccineInfoSubsetTwo, cluster==1)
-summary(vaccineInfo2Cluster1$sites_per_1k_ppl) # mean -0.21
+summary(vaccineInfo2Cluster1$sites_per_1k_ppl)
 vaccineInfo2Cluster2 <- filter(vaccineInfoSubsetTwo, cluster==2)
-summary(vaccineInfo2Cluster2$sites_per_1k_ppl) # mean 0.40
+summary(vaccineInfo2Cluster2$sites_per_1k_ppl)
 vaccineInfo2Cluster3 <- filter(vaccineInfoSubsetTwo, cluster==3)
-summary(vaccineInfo2Cluster3$sites_per_1k_ppl) # mean 0.02
+summary(vaccineInfo2Cluster3$sites_per_1k_ppl) 
 
 # Simple Horizontal Bar Plot with Added Labels
 counts <- table(vaccineInfoSubsetTwo$cluster)
