@@ -636,9 +636,25 @@ summary(vaccineInfo2Cluster2$sites_per_1k_ppl) # mean 0.40
 vaccineInfo2Cluster3 <- filter(vaccineInfoSubsetTwo, cluster==3)
 summary(vaccineInfo2Cluster3$sites_per_1k_ppl) # mean 0.02
 
-# Subset two's cluster 2 did the best in providing vaccine sites
-# cluster 1 did the worst. 
+# Simple Horizontal Bar Plot with Added Labels
+counts <- table(vaccineInfoSubsetTwo$cluster)
+barplot(counts, main="Subset Two Cluster Distribution", col="turquoise", horiz=TRUE,
+        xlim = c(0, 150), axisnames = TRUE, 
+        xlab = "Number of Counties", ylab = "Cluster Number",
+        names.arg=c("1", "2", "3"))
 
+# Box Plots for Vaccine Information
+# Visualize how each cluster performed in terms of vaccine sites
+boxplot(sites_per_1k_ppl~cluster,
+        data=vaccineInfoSubsetTwo,
+        main="Subset Two Clusters - Vaccine Sites Box Plots",
+        xlab="Cluster Number",
+        ylab="Normalized Vaccine Sites per 1k People",
+        col="turquoise",
+        border="black"
+)
+means <- tapply(vaccineInfoSubsetTwo$sites_per_1k_ppl,vaccineInfoSubsetTwo$cluster,mean)
+points(means,col="red",pch=18)
 
 
 
