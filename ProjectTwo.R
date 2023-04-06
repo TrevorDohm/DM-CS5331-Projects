@@ -152,7 +152,7 @@ summary(dataFinal)
 sumtable(dataFinal, out = 'htmlreturn')
 
 # Subset Original Data With Found Features
-casesCensusFinal <- casesCensus %>% select(colnames(dataFinal), 'poverty', 'commuters_by_public_transportation')
+casesCensusFinal <- casesCensus %>% select(colnames(dataFinal)) # 'poverty', 'commuters_by_public_transportation'
 casesCensusFinal <- casesCensusFinal %>% select_if(is.numeric) %>% 
   scale() %>% as_tibble() %>% add_column(casesCensus$county_name) %>% 
   rename("county" = "casesCensus$county_name") %>% 
@@ -166,21 +166,20 @@ datatable(casesCensusFinal) %>% formatRound(c(5, 9, 10), 2) %>% formatPercentage
 # Add County Name To Final Data For All Future Map Plots
 casesCensusFinal <- casesCensusFinal %>% mutate(county = county %>% str_to_lower() %>% str_replace('\\s+county\\s*$', ''))
 
-
-# Subset Original Data With Found Features
-casesCensus2Final <- dataFinal %>% select(colnames(dataFinal))
-casesCensus2Final <- casesCensus2Final %>% select_if(is.numeric) %>% 
-  scale() %>% as_tibble() %>% add_column(dataFinal$county_name) %>% 
-  rename("county" = "dataFinal$county_name") %>% 
-  select(county, everything())
-
-# Data Explorer Code
-plot_intro(casesCensus2Final, title = "Intro Plot for Finalized Census Dataset")
-datatable(casesCensus2Final) %>% formatRound(c(5, 9, 10), 2) %>% formatPercentage(11, 2)
-# NOTE: (dataFinal$owner_occupied_housing_units_upper_value_quartile) Has Two NA Values
-
-# Add County Name To Final Data For All Future Map Plots
-casesCensus2Final <- casesCensus2Final %>% mutate(county = county %>% str_to_lower() %>% str_replace('\\s+county\\s*$', ''))
+# # Subset Original Data With Found Features
+# casesCensus2Final <- dataFinal %>% select(colnames(dataFinal))
+# casesCensus2Final <- casesCensus2Final %>% select_if(is.numeric) %>% 
+#   scale() %>% as_tibble() %>% add_column(dataFinal$county_name) %>% 
+#   rename("county" = "dataFinal$county_name") %>% 
+#   select(county, everything())
+# 
+# # Data Explorer Code
+# plot_intro(casesCensus2Final, title = "Intro Plot for Finalized Census Dataset")
+# datatable(casesCensus2Final) %>% formatRound(c(5, 9, 10), 2) %>% formatPercentage(11, 2)
+# # NOTE: (dataFinal$owner_occupied_housing_units_upper_value_quartile) Has Two NA Values
+# 
+# # Add County Name To Final Data For All Future Map Plots
+# casesCensus2Final <- casesCensus2Final %>% mutate(county = county %>% str_to_lower() %>% str_replace('\\s+county\\s*$', ''))
 
 
 
@@ -378,7 +377,6 @@ subsetOneEV
 
 
 
-
 # SUBSET TWO - KMEANS
 
 # Cluster With K-Means
@@ -446,9 +444,7 @@ HClusterssubsetTwo <- cutree(hcsubsetTwo, k = 4)
 completesubsetTwoHC <- subsetTwo[, 2:length(subsetTwo)] %>%
   add_column(cluster = factor(HClusterssubsetTwo))
 completesubsetTwoHC
-ggplot(completesubsetTwoHC, aes(gini_index, death_per_case, color = cluster)) + geom_point() + ggtitle("Subset Two Hierarchical Clustering Complete-linkage Plot")
-ggplot(completesubsetTwoHC, aes(owner_occupied_housing_units_upper_value_quartile, death_per_case, color = cluster)) + geom_point() + ggtitle("Subset Two Hierarchical Clustering Complete-linkage Plot")
-
+ggplot(completesubsetTwoHC, aes(owner_occupied_housing_units_upper_value_quartile, income_per_capita, color = cluster)) + geom_point() + ggtitle("Subset Two Hierarchical Clustering Complete-linkage Plot")
 
 # Visualize Some Data Using Map (HC)
 subsetTwoHClustTX <- counties_TX %>% left_join(subsetTwo %>% add_column(cluster = factor(HClusterssubsetTwo)))
@@ -476,7 +472,7 @@ str(subsetTwoDB)
 
 # Visualize DBSCAN Plot
 ggplot(subsetTwo[, 2:length(subsetTwo)] %>% add_column(cluster = factor(subsetTwoDB$cluster)),
-       aes(gini_index, death_per_case, color = cluster)) + geom_point() + ggtitle("Subset Two DBSCAN Clustering Plot")
+       aes(owner_occupied_housing_units_upper_value_quartile, income_per_capita, color = cluster)) + geom_point() + ggtitle("Subset Two DBSCAN Clustering Plot")
 fviz_cluster(subsetTwoDB, subsetTwo[, 2:length(subsetTwo)], geom = "point") + ggtitle("Subset Two DBSCAN Clustering Plot")
 
 
@@ -543,7 +539,6 @@ fviz_dist(distsubsetTwo)
 
 # Prepare Ground Truth
 subsetTwoGT <- casesCensusFinal %>% select(county, death_per_case) %>% arrange(desc(death_per_case))
-
 subsetTwoGT <- subsetTwoGT[!(subsetTwoGT$county %in% c("kenedy","king")),]
 
 subsetTwoGT$cluster <- factor(case_when(
@@ -577,91 +572,87 @@ subsetTwoEV
 
 
 
-
 # COMPARE RESPONSE TO VACCINE 
+
 subsetOneClustersKM %>% group_by(cluster) %>% summarize(
   avg_cases = mean(cases_per_1000), 
   avg_deaths = mean(deaths_per_1000))
 
 vaccineInfo <- vaccineInfo %>% mutate(us_county = us_county %>% str_to_lower() %>% str_replace('\\s+county\\s*$', ''))
 vaccineInfo <- vaccineInfo %>% rename("county" = "us_county") 
-vaccineInfoSubsetOne <- vaccineInfo %>% left_join( clustersSubsetOneKM, 
-                             by=c('county'))
+vaccineInfoSubsetOne <- vaccineInfo %>% left_join(clustersSubsetOneKM, by = c('county'))
 
-vaccineInfoCluster1 <- filter(vaccineInfoSubsetOne, cluster==1)
+vaccineInfoCluster1 <- filter(vaccineInfoSubsetOne, cluster == 1)
 summary(vaccineInfoCluster1$sites_per_1k_ppl)
-vaccineInfoCluster2 <- filter(vaccineInfoSubsetOne, cluster==2)
+vaccineInfoCluster2 <- filter(vaccineInfoSubsetOne, cluster == 2)
 summary(vaccineInfoCluster2$sites_per_1k_ppl)
-vaccineInfoCluster3 <- filter(vaccineInfoSubsetOne, cluster==3)
+vaccineInfoCluster3 <- filter(vaccineInfoSubsetOne, cluster == 3)
 summary(vaccineInfoCluster3$sites_per_1k_ppl)
-vaccineInfoCluster4 <- filter(vaccineInfoSubsetOne, cluster==4)
+vaccineInfoCluster4 <- filter(vaccineInfoSubsetOne, cluster == 4)
 summary(vaccineInfoCluster4$sites_per_1k_ppl)
-vaccineInfoCluster5 <- filter(vaccineInfoSubsetOne, cluster==5)
+vaccineInfoCluster5 <- filter(vaccineInfoSubsetOne, cluster == 5)
 summary(vaccineInfoCluster5$sites_per_1k_ppl)
 
-# Simple Horizontal Bar Plot with Added Labels
+# Simple Horizontal Bar Plot With Added Labels
 counts <- table(vaccineInfoSubsetOne$cluster)
-barplot(counts, main="Subset One Cluster Distribution", col="turquoise", horiz=TRUE,
+barplot(counts, main = "Subset One Cluster Distribution", col = "turquoise", horiz = TRUE,
         xlim = c(0, 60), axisnames = TRUE, 
         xlab = "Number of Counties", ylab = "Cluster Number",
-        names.arg=c("1", "2", "3", "4", "5"))
+        names.arg = c("1", "2", "3", "4", "5"))
 
-# Box Plots for Vaccine Information
-# Visualize how each cluster performed in terms of vaccine sites
+# Box Plots For Vaccine Information - Visualize How
+# Each Cluster Performed In Terms Of Vaccine Sites
 boxplot(sites_per_1k_ppl~cluster,
-        data=vaccineInfoSubsetOne,
-        main="Subset One Clusters - Vaccine Sites Box Plots",
-        xlab="Cluster Number",
-        ylab="Normalized Vaccine Sites per 1k People",
-        col="turquoise",
-        border="black"
+        data = vaccineInfoSubsetOne,
+        main = "Subset One Clusters - Vaccine Sites Box Plots",
+        xlab = "Cluster Number",
+        ylab = "Normalized Vaccine Sites per 1k People",
+        col = "turquoise",
+        border = "black"
 )
-means <- tapply(vaccineInfoSubsetOne$sites_per_1k_ppl,vaccineInfoSubsetOne$cluster,mean)
-points(means,col="red",pch=18)
+means <- tapply(vaccineInfoSubsetOne$sites_per_1k_ppl, vaccineInfoSubsetOne$cluster, mean)
+points(means, col = "red", pch = 18)
 
-
-
-# subset two
+# Do The Same For Subset Two
 subsetTwoClustersKM %>% group_by(cluster) %>% summarize(
   avg_cases = mean(cases_per_1000), 
   avg_deaths = mean(deaths_per_1000))
 
-vaccineInfoSubsetTwo <- vaccineInfo %>% left_join( clusterssubsetTwoKM, 
-                                          by=c('county'))
+vaccineInfoSubsetTwo <- vaccineInfo %>% left_join(clusterssubsetTwoKM, by = c('county'))
 
-vaccineInfo2Cluster1 <- filter(vaccineInfoSubsetTwo, cluster==1)
+vaccineInfo2Cluster1 <- filter(vaccineInfoSubsetTwo, cluster == 1)
 summary(vaccineInfo2Cluster1$sites_per_1k_ppl)
-vaccineInfo2Cluster2 <- filter(vaccineInfoSubsetTwo, cluster==2)
+vaccineInfo2Cluster2 <- filter(vaccineInfoSubsetTwo, cluster == 2)
 summary(vaccineInfo2Cluster2$sites_per_1k_ppl)
-vaccineInfo2Cluster3 <- filter(vaccineInfoSubsetTwo, cluster==3)
+vaccineInfo2Cluster3 <- filter(vaccineInfoSubsetTwo, cluster == 3)
 summary(vaccineInfo2Cluster3$sites_per_1k_ppl) 
 
-# Simple Horizontal Bar Plot with Added Labels
+# Simple Horizontal Bar Plot With Added Labels
 counts <- table(vaccineInfoSubsetTwo$cluster)
-barplot(counts, main="Subset Two Cluster Distribution", col="turquoise", horiz=TRUE,
+barplot(counts, main = "Subset Two Cluster Distribution", col = "turquoise", horiz = TRUE,
         xlim = c(0, 150), axisnames = TRUE, 
         xlab = "Number of Counties", ylab = "Cluster Number",
-        names.arg=c("1", "2", "3"))
+        names.arg = c("1", "2", "3"))
 
-# Box Plots for Vaccine Information
-# Visualize how each cluster performed in terms of vaccine sites
+# Box Plots For Vaccine Information - Visualize How
+# Each Cluster Performed In Terms Of Vaccine Sites
 boxplot(sites_per_1k_ppl~cluster,
-        data=vaccineInfoSubsetTwo,
-        main="Subset Two Clusters - Vaccine Sites Box Plots",
-        xlab="Cluster Number",
-        ylab="Normalized Vaccine Sites per 1k People",
-        col="turquoise",
-        border="black"
+        data = vaccineInfoSubsetTwo,
+        main = "Subset Two Clusters - Vaccine Sites Box Plots",
+        xlab = "Cluster Number",
+        ylab = "Normalized Vaccine Sites per 1k People",
+        col = "turquoise",
+        border = "black"
 )
-means <- tapply(vaccineInfoSubsetTwo$sites_per_1k_ppl,vaccineInfoSubsetTwo$cluster,mean)
-points(means,col="red",pch=18)
+means <- tapply(vaccineInfoSubsetTwo$sites_per_1k_ppl, vaccineInfoSubsetTwo$cluster, mean)
+points(means,col = "red", pch = 18)
+
+
 
 
 
 # # PREVIOUS CODE
-# 
-# 
-# 
+#
 # # Vaccine Information Clustering
 # 
 # # Note Data Already Sorted In Ascending Order
