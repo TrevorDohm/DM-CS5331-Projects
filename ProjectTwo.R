@@ -315,7 +315,7 @@ subsetOneASW <- sapply(ks, FUN = function(k) { fpc::cluster.stats(distSubsetOne,
 subsetOneBestK <- ks[which.max(subsetOneASW)]
 subsetOneBestK
 ggplot(as_tibble(subsetOneASW), aes(ks, subsetOneASW)) + geom_line() +
-  geom_vline(xintercept = subsetOneBestK, color = "red", linetype = 2) + ggtitle("Average Silhouette Width: Optimate Number of Clusters")
+  geom_vline(xintercept = subsetOneBestK, color = "red", linetype = 2) + ggtitle("Average Silhouette Width: Optimal Number of Clusters")
 
 # Dunn Index
 subsetOneDI <- sapply(ks, FUN = function(k) { fpc::cluster.stats(distSubsetOne, kmeans(subsetOne[, 2:length(subsetOne)], centers = k, nstart = 5)$cluster)$dunn })
