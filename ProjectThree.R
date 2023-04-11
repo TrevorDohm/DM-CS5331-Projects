@@ -1,10 +1,11 @@
 library("tidyverse")
 library("DT")
 library(caret)
-
+library(seriation)
+library(FSelector)
 
 # Read Data
-cases <- read_csv("COVID-19_cases_plus_census.csv")
+cases <- read_csv("Datasets/COVID-19_cases_plus_census.csv")
 cases
 
 # Make character factor for analysis
@@ -73,9 +74,8 @@ table(complete.cases(cases_sel))
 str(cases_sel)
 
 # Check correlation for numeric variables
-library(seriation)
 cm <- cor(cases_sel %>% select_if(is.numeric) %>% na.omit)
-hmap(cm, margins = c(14,14))
+hmap(cm, margins = c(10,10)) # it said anything above 10 was figure margins too large (error)
 
 # This focuses on states with covid 19 outbreaks
 # Create class variable
@@ -116,7 +116,6 @@ ggplot(counties_all, aes(long, lat)) +
   coord_quickmap() + scale_fill_manual(values = c('TRUE' = 'red', 'FALSE' = 'grey'))
 
 # check variable importance
-library(FSelector)
 cases_train %>%  chi.squared(bad ~ ., data = .) %>% 
   arrange(desc(attr_importance)) %>% head()
 
