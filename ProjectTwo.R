@@ -22,7 +22,7 @@ library(factoextra)
 library(vtable)
 library(NbClust)
 library(seriation)
-
+library(GGally)
 
 
 
@@ -84,7 +84,7 @@ plot_intro(casesDeaths, title = "Intro Plot for Texas Cases And Deaths")
 plot_intro(counties_TX, title = "Intro Plot for Texas County Positions")
 
 # Clean Vaccine Data (Scale, Remove Columns)
-vaccineInfo <- vaccineInfo  %>% mutate_if(is.character, factor)
+vaccineInfo <- vaccineInfo %>% mutate_if(is.character, factor)
 vaccineNonNumeric <- vaccineInfo %>% select_if(~!is.numeric(.))
 vaccineNumeric <- vaccineInfo %>% select_if(is.numeric) %>% scale() %>% as_tibble()
 vaccineInfo <- vaccineNumeric %>% add_column(vaccineNonNumeric$us_county) %>% 
@@ -196,6 +196,7 @@ summary(subsetOne)
 subsetOneKM <- kmeans(subsetOne[, 2:length(subsetOne)], centers = 5)
 subsetOneKM
 pairs(subsetOne[, 2:length(subsetOne)], col = subsetOneKM$cluster + 1L, main = "Subset One Pairs Plot")
+ggpairs(subsetOne[, 2:length(subsetOne)])
 
 # Visualize K-Means Plot
 clustersSubsetOneKM <- subsetOne %>% add_column(cluster = factor(subsetOneKM$cluster))
