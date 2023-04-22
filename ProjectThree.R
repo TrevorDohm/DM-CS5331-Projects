@@ -155,18 +155,23 @@ datatable(casesCensusFinal) %>% formatRound(c(5, 9, 10), 2) %>% formatPercentage
 summary(casesCensusFinal)
 table(complete.cases(casesCensusFinal))
 
+# Check Correlation For Numeric Variables
+corrMatrixFinal <- cor(casesCensusFinal %>% select_if(is.numeric))
+hmap(corrMatrixFinal, margins = c(10, 10))
+
 # NOTE: MAY NEED TO SCALE ADDED COLUMNS - IF SKEWED RESULTS, COME BACK TO THIS STEP
 
 
 
 
 
+# Idea: Focus on states with Covid-19 outbreaks
+# Use a few states with many cases (training data) to learn a model of how 
+# demographics and socioeconomic factors affect fatalities and then apply the 
+# model to the other states (test data). I define the class variable by discretizing 
+# deaths per a population of 10,000 into below and above 10 deaths.
+
 # CLASS CREATION
-# Check Correlation For Numeric Variables
-corrMatrixFinal <- cor(casesCensusFinal %>% select_if(is.numeric))
-hmap(corrMatrixFinal, margins = c(10, 10))
-
-
 
 # This focuses on states with covid 19 outbreaks
 # Create class variable
