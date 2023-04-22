@@ -153,14 +153,13 @@ plot_intro(casesCensusFinal, title = "Intro Plot for Finalized Census Dataset")
 datatable(casesCensusFinal) %>% formatRound(c(5, 9, 10), 2) %>% formatPercentage(11, 2)
 summary(casesCensusFinal)
 table(complete.cases(casesCensusFinal))
+str(casesCensusFinal)
 
 # Check Correlation For Numeric Variables
 corrMatrixFinal <- cor(casesCensusFinal %>% select_if(is.numeric))
 hmap(corrMatrixFinal, margins = c(10, 10))
 
-# NOTE: MAY NEED TO SCALE ADDED COLUMNS - IF SKEWED RESULTS, COME BACK TO THIS STEP
-
-
+# NOTE: NORMALIZATION NOT INCLUDED CURRENTLY - COME BACK LATER
 
 
 
