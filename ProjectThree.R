@@ -323,8 +323,8 @@ ggplot(imp2)
 
 # USE MODEL FOR THE REST OF THE US
 # caret does not make prediction with missing data
-cases_test_edit <- cases_test %>% na.omit %>% select(-deaths_class)
-cases_test_edit$risk_predicted <- predict(fit2, cases_test_edit)
+cases_test_edit <- cases_test %>% na.omit
+cases_test_edit$risk_predicted <- predict(fit2, subset(cases_test_edit, select = -c(deaths_class)))
 
 # visualize the results
 counties_test <- counties %>% left_join(cases_test_edit %>% 
@@ -343,11 +343,11 @@ ggplot(counties_test, aes(long, lat)) +
   scale_fill_manual(values = c('low' = 'yellow', 'medium' = 'orange', 'high' = 'red'))
 
 # confusion matrix
-confusionMatrix(data = cases_test$bad_predicted, ref = cases_test$bad)
+confusionMatrix(data = cases_test_edit$risk_predicted, ref = cases_test_edit$deaths_class)
 
 
 
-
+### END
 
 
 
