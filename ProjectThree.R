@@ -127,22 +127,21 @@ boxplot(dataFinal %>% select(-1))$out
 title("Box Plot of Normalized Census Data After Removing Outliers")
 
 # Subset Original Data With Found Features (+ Some Extra)
-casesCensusFinal <- casesCensus %>% select(colnames(dataFinal), "employed_pop", "unemployed_pop", "in_school", "in_undergrad_college")
-casesCensusFinal <- casesCensusFinal %>% select_if(is.numeric) %>% 
-  scale() %>% as_tibble() %>% add_column(casesCensus$county_name) %>% 
-  rename("county" = "casesCensus$county_name") %>% 
-  select(county, everything()) %>% add_column(casesCensus$state) %>% 
-  rename("state" = "casesCensus$state") %>% 
-  select(state, everything())
-
 # Add More Columns - Classes For Classification
 # Note: Omit Drops 5 Counties, Filter Drops 1 County
-casesCensusFinal <- casesCensusFinal %>% add_column(casesCensus$confirmed_cases) %>%
-  add_column(casesCensus$total_pop) %>% rename("confirmed_cases" = "casesCensus$confirmed_cases") %>% 
+casesCensusFinal <- casesCensus %>% select(colnames(dataFinal), "employed_pop", "unemployed_pop", "in_school", "in_undergrad_college")
+casesCensusFinal <- casesCensusFinal %>% select_if(is.numeric) %>% as_tibble() %>% 
+  add_column(casesCensus$county_name) %>% rename("county" = "casesCensus$county_name") %>% 
+  add_column(casesCensus$state) %>% rename("state" = "casesCensus$state") %>%
+  add_column(casesCensus$confirmed_cases) %>%
+  add_column(casesCensus$total_pop) %>%
+  rename("confirmed_cases" = "casesCensus$confirmed_cases") %>% 
   rename("total_pop" = "casesCensus$total_pop") %>% mutate(
-  cases_per_10000 = confirmed_cases / total_pop * 10000, 
-  deaths_per_10000 = deaths / total_pop * 10000, 
-  death_per_case = deaths / confirmed_cases) %>% na.omit() %>% filter(confirmed_cases > 0)
+    cases_per_10000 = confirmed_cases / total_pop * 10000, 
+    deaths_per_10000 = deaths / total_pop * 10000, 
+    death_per_case = deaths / confirmed_cases) %>% na.omit() %>% 
+  filter(confirmed_cases > 0) %>% select(state, county, total_pop, confirmed_cases, deaths, 
+                                         cases_per_10000, deaths_per_10000, death_per_case, everything())
 
 # Add County Name To Final Data For All Future Map Plots, Format
 casesCensusFinal <- casesCensusFinal %>% 
