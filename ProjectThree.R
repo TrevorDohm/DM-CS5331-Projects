@@ -148,6 +148,13 @@ casesCensusFinal <- casesCensusFinal %>%
   mutate(county = county %>% str_to_lower() %>% str_replace('\\s+county\\s*$', '')) %>%
   arrange(desc(confirmed_cases)) %>% mutate_if(is.character, factor)
 
+# Check Correlation For Numeric Variables (Before Normalization)
+corrMatrixFinal <- cor(casesCensusFinal %>% select_if(is.numeric))
+hmap(corrMatrixFinal, margins = c(10, 10))
+
+# Normalization
+casesCensusFinal[, -(1:8)] <- casesCensusFinal[, -(1:8)] / casesCensusFinal$total_pop
+
 # Data Explorer Code (Finalization)
 plot_intro(casesCensusFinal, title = "Intro Plot for Finalized Census Dataset")
 datatable(casesCensusFinal) %>% formatRound(c(5, 9, 10), 2) %>% formatPercentage(11, 2)
@@ -155,11 +162,11 @@ summary(casesCensusFinal)
 table(complete.cases(casesCensusFinal))
 str(casesCensusFinal)
 
-# Check Correlation For Numeric Variables
+# Check Correlation For Numeric Variables (After Normalization)
 corrMatrixFinal <- cor(casesCensusFinal %>% select_if(is.numeric))
 hmap(corrMatrixFinal, margins = c(10, 10))
 
-# NOTE: NORMALIZATION NOT INCLUDED CURRENTLY - COME BACK LATER
+
 
 
 
