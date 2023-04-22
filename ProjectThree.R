@@ -178,26 +178,42 @@ hmap(corrMatrixFinal, margins = c(10, 10))
 
 # CLASS CREATION
 
-# This focuses on states with covid 19 outbreaks
-# Create class variable
-# Bad means high fatality rate
-cases_sel <- cases_sel %>% mutate(bad = as.factor(deaths_per_10000 > 10))
+# This focuses on counties with covid 19 outbreaks
+# Create deaths_class class variable
+# Consists of values "high", "medium", and "low"
+# High is a death_per_case value greater than 0.016
+# Medium is a value less than 0.02 but greater than 0.011
+# Low is a value less than 0.011 (minimum is 0)
+casesCensusFinal <- casesCensusFinal %>% mutate(deaths_class = case_when(
+  death_per_case > 0.016 ~ "high",
+  death_per_case > 0.011 ~ "medium",
+  TRUE ~ "low"
+))
 
 # check if class variable is very imbalanced
-cases_sel %>% pull(bad) %>% table()
+casesCensusFinal %>% pull(deaths_class) %>% table()
 
-cases_sel %>% group_by(state) %>% 
-  summarize(bad_pct = sum(bad == TRUE)/n()) %>%
-  arrange(desc(bad_pct))
+casesCensusFinal %>% group_by(state) %>% 
+  summarize(low_pct = sum(deaths_class == "low")/n()) %>%
+  arrange(desc(low_pct))
+
+casesCensusFinal %>% group_by(state) %>% 
+  summarize(med_pct = sum(deaths_class == "medium")/n()) %>%
+  arrange(desc(med_pct))
+
+casesCensusFinal %>% group_by(state) %>% 
+  summarize(high_pct = sum(deaths_class == "high")/n()) %>%
+  arrange(desc(high_pct))
 
 
 # SPLIT INTO TRAINING AND TEST DATA
 # using TX, CA, FL, NY to train
-cases_train <- cases_sel %>% filter(state %in% c("TX", "CA", "FL", "NY"))
-cases_train %>% pull(bad) %>% table()
+cases_train <- casesCensusFinal %>% filter(state %in% c("TX", "CA", "FL", "NY"))
+cases_train %>% pull(deaths_class) %>% table()
 
-cases_test <-  cases_sel %>% filter(!(state %in% c("TX", "CA", "FL", "NY")))
-cases_test %>% pull(bad) %>% table()
+# using everything except TX, CA, FL, NY to test
+cases_test <-  casesCensusFinal %>% filter(!(state %in% c("TX", "CA", "FL", "NY")))
+cases_test %>% pull(deaths_class) %>% table()
 
 # Select Features
 # Plot a map for test data
@@ -208,27 +224,30 @@ counties <- counties %>%
   select(state, county, long, lat, group)
 counties 
 
+# add variables to map data
 counties_all <- counties %>% left_join(cases_train %>% 
-                                         mutate(county = county_name %>% str_to_lower() %>% 
+                                         mutate(county = county %>% str_to_lower() %>% 
                                                   str_replace('\\s+county\\s*$', '')))
 
 ggplot(counties_all, aes(long, lat)) + 
-  geom_polygon(aes(group = group, fill = bad), color = "black", size = 0.1) + 
-  coord_quickmap() + scale_fill_manual(values = c('TRUE' = 'red', 'FALSE' = 'grey'))
+  geom_polygon(aes(group = group, fill = deaths_class), color = "black", size = 0.1) + 
+  coord_quickmap() + scale_fill_manual(values = c('low' = 'yellow', 'medium' = 'orange', 'high' = 'red')
+                                       + ggtitle("Level of Risk Map Plot of Training Data for CA, TX, NY, and FL"))
+  
 
 # check variable importance
-cases_train %>%  chi.squared(bad ~ ., data = .) %>% 
+cases_train %>%  chi.squared(deaths_class ~ ., data = .) %>% 
   arrange(desc(attr_importance)) %>% head()
 
 # we need to remove the variable that was used to create the class variable
-cases_train <- cases_train %>% select(-c(deaths_per_10000))
-cases_train %>%  chi.squared(bad ~ ., data = .) %>% 
+cases_train <- cases_train %>% select(-c(death_per_case))
+cases_train %>%  chi.squared(deaths_class ~ ., data = .) %>% 
   arrange(desc(attr_importance)) %>% head()
 
 # remove more covid 19 related variables
-cases_train <- cases_train %>% select(-death_per_case, -cases_per_10000)
+cases_train <- cases_train %>% select(-deaths_per_10000, -cases_per_10000)
 
-cases_train %>%  chi.squared(bad ~ ., data = .) %>% 
+cases_train %>%  chi.squared(deaths_class ~ ., data = .) %>% 
   arrange(desc(attr_importance)) %>% head(n = 10)
 
 
