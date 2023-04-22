@@ -231,7 +231,8 @@ counties_all <- counties %>% left_join(cases_train %>%
 
 ggplot(counties_all, aes(long, lat)) + 
   geom_polygon(aes(group = group, fill = deaths_class), color = "black", size = 0.1) + 
-  coord_quickmap() + ggtitle("Level of Risk Map Plot of Training Data for CA, TX, NY, and FL") + scale_fill_manual(values = c('low' = 'yellow', 'medium' = 'orange', 'high' = 'red'))
+  coord_quickmap() + ggtitle("Level of Risk Map Plot of Training Data for CA, TX, NY, and FL") 
++ scale_fill_manual(values = c('low' = 'yellow', 'medium' = 'orange', 'high' = 'red'))
   
 
 # check variable importance
@@ -243,10 +244,25 @@ cases_train <- cases_train %>% select(-c(death_per_case))
 cases_train %>%  chi.squared(deaths_class ~ ., data = .) %>% 
   arrange(desc(attr_importance)) %>% head()
 
+cases_test <- cases_test %>% select(-c(death_per_case))
+cases_test %>%  chi.squared(deaths_class ~ ., data = .) %>% 
+  arrange(desc(attr_importance)) %>% head()
+
 # remove more covid 19 related variables
-cases_train <- cases_train %>% select(-deaths_per_10000, -cases_per_10000)
+cases_train <- cases_train %>% select(-deaths_per_10000,
+                                      -cases_per_10000,
+                                      -confirmed_cases,
+                                      -deaths)
 
 cases_train %>%  chi.squared(deaths_class ~ ., data = .) %>% 
+  arrange(desc(attr_importance)) %>% head(n = 10)
+
+cases_test <- cases_test %>% select(-deaths_per_10000,
+                                    -cases_per_10000,
+                                    -confirmed_cases,
+                                    -deaths)
+
+cases_test %>%  chi.squared(deaths_class ~ ., data = .) %>% 
   arrange(desc(attr_importance)) %>% head(n = 10)
 
 
@@ -255,6 +271,7 @@ cases_train %>%  chi.squared(deaths_class ~ ., data = .) %>%
 # Don’t use county or state name. 
 # The variables are not useful to compare between states 
 # and variables with many levels will make tree-based algorithms very slow.
+# El Dayeh method
 fit <- cases_train %>%
   train(deaths_class ~ . - county - state,
         data = . ,
@@ -278,7 +295,55 @@ imp <- varImp(fit, compete = FALSE)
 imp
 ggplot(imp)
 
+# Hassler Method
+fit2 <- cases_train %>%
+  train(deaths_class ~ . - county - state,
+        data = . ,
+        method = "rpart",
+        #method = "rf",
+        #method = "nb",
+        control = rpart.control(minsplit = 2),
+        trControl = trainControl(method = "cv", number = 10),
+        tuneLength = 5
+  )
+fit2
 
+varImp(fit2)
+
+
+library(rpart.plot)
+rpart.plot(fit2$finalModel, extra = 2)
+
+# Variable importance without competing splits
+imp2 <- varImp(fit2, compete = FALSE)
+imp2
+ggplot(imp2)
+
+
+
+# USE MODEL FOR THE REST OF THE US
+# caret does not make prediction with missing data
+cases_test_edit <- cases_test %>% na.omit %>% select(-deaths_class)
+cases_test_edit$risk_predicted <- predict(fit2, cases_test_edit)
+
+# visualize the results
+counties_test <- counties %>% left_join(cases_test_edit %>% 
+                                          mutate(county = county %>% str_to_lower() %>% 
+                                                   str_replace('\\s+county\\s*$', '')))
+# ground truth
+ggplot(counties_test, aes(long, lat)) + 
+  geom_polygon(aes(group = group, fill = deaths_class), color = "black", size = 0.1) + 
+  coord_quickmap() + 
+  scale_fill_manual(values = c('low' = 'yellow', 'medium' = 'orange', 'high' = 'red'))
+
+# predictions
+ggplot(counties_test, aes(long, lat)) + 
+  geom_polygon(aes(group = group, fill = risk_predicted), color = "black", size = 0.1) + 
+  coord_quickmap() + 
+  scale_fill_manual(values = c('low' = 'yellow', 'medium' = 'orange', 'high' = 'red'))
+
+# confusion matrix
+confusionMatrix(data = cases_test$bad_predicted, ref = cases_test$bad)
 
 
 
