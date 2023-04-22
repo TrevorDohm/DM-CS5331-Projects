@@ -231,8 +231,7 @@ counties_all <- counties %>% left_join(cases_train %>%
 
 ggplot(counties_all, aes(long, lat)) + 
   geom_polygon(aes(group = group, fill = deaths_class), color = "black", size = 0.1) + 
-  coord_quickmap() + scale_fill_manual(values = c('low' = 'yellow', 'medium' = 'orange', 'high' = 'red')
-                                       + ggtitle("Level of Risk Map Plot of Training Data for CA, TX, NY, and FL"))
+  coord_quickmap() + ggtitle("Level of Risk Map Plot of Training Data for CA, TX, NY, and FL") + scale_fill_manual(values = c('low' = 'yellow', 'medium' = 'orange', 'high' = 'red'))
   
 
 # check variable importance
@@ -251,6 +250,33 @@ cases_train %>%  chi.squared(deaths_class ~ ., data = .) %>%
   arrange(desc(attr_importance)) %>% head(n = 10)
 
 
+
+# BUILD A MODEL
+# Don’t use county or state name. 
+# The variables are not useful to compare between states 
+# and variables with many levels will make tree-based algorithms very slow.
+fit <- cases_train %>%
+  train(deaths_class ~ . - county - state,
+        data = . ,
+        #method = "rpart",
+        method = "rf",
+        #method = "nb",
+        #control = rpart.control(minsplit = 2),
+        trControl = trainControl(method = "cv", number = 10),
+        tuneLength = 5
+  )
+fit
+
+varImp(fit)
+
+
+library(rpart.plot)
+#rpart.plot(fit$finalModel, extra = 2)
+
+# Variable importance without competing splits
+imp <- varImp(fit, compete = FALSE)
+imp
+ggplot(imp)
 
 
 
