@@ -16,6 +16,9 @@ library(mlbench)
 library(vtable)
 library(DataExplorer)
 library(DT)
+library(RWeka)
+library(lattice)
+
 
 # Make Results Reproducible
 set.seed(1000)
@@ -248,21 +251,49 @@ cases_train %>% chi.squared(deaths_class ~ ., data = .) %>%
 
 
 # BUILD A MODEL
+# Create a fixed sampling scheme with 10 folds to compare models later
+train_index <- createFolds(cases_train$deaths_class, k = 10)
+
+
+# K-Nearest Neighbors
+knnFit <- subset(cases_train, select = -c(county, state)) %>% train(deaths_class ~ .,
+                              method = "knn",
+                              data = .,
+                              preProcess = "scale",
+                              tuneLength = 5,
+                              tuneGrid=data.frame(k = 1:10),
+                              trControl = trainControl(method = "cv", indexOut = train_index))
+knnFit
+
+knnFit$finalModel
+
+
+# Artificial Neural Network
+nnetFit <- subset(cases_train, select = -c(county, state)) %>% train(deaths_class ~ .,
+                               method = "nnet",
+                               data = .,
+                               tuneLength = 5,
+                               trControl = trainControl(method = "cv", indexOut = train_index),
+                               trace = FALSE)
+nnetFit
+
+nnetFit$finalModel
 
 # Note: Do Not Use County, State Name (Not Useful)
 # Variables With Many Levels Will Make Tree-Based Algorithms Slower
+# Random Forest
 fit <- cases_train %>%
   train(deaths_class ~ . - county - state,
     data = . ,
-    # method = "rpart",
     method = "rf",
-    # method = "nb",
-    # control = rpart.control(minsplit = 2),
     trControl = trainControl(method = "cv", number = 10),
     tuneLength = 5
     )
 
 # Analyze Fit
+fit$finalModel
+
+# Analyze Fit (Variable Importance Without Competing Splits)
 varImp(fit)
 fit
 
@@ -271,8 +302,18 @@ imp <- varImp(fit, compete = FALSE)
 ggplot(imp)
 imp
 
+# Comparing Models
+resamps <- resamples(list(
+  KNN = knnFit,
+  randomForest = fit,
+  NeuralNet = nnetFit
+))
+resamps
 
+summary(resamps)
 
+# Visualization for Model Comparison
+bwplot(resamps, layout = c(3, 1))
 
 
 # USE MODEL FOR THE REST OF UNITED STATES
