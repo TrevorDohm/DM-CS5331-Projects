@@ -39,11 +39,6 @@ counties <- counties %>%
   mutate(state = state.abb[match(state, tolower(state.name))]) %>%
   select(state, county, long, lat, group)
 
-# Add Variables To Map Data
-counties_all <- counties %>% left_join(cases_train %>% 
-  mutate(county = county %>% str_to_lower() %>% 
-  str_replace('\\s+county\\s*$', '')))
-
 # Summary Before Manipulation
 casesCensus
 vaccineInfo
@@ -217,12 +212,17 @@ casesCensusFinal %>% group_by(state) %>%
 # SPLIT INTO TRAINING AND TEST DATA
 
 # Using TX, CA, FL, NY To Train
-cases_train <- casesCensusFinal %>% filter(state %in% c("TX", "CA", "FL", "NY"))
+cases_train <- casesCensusFinal %>% filter(!(state %in% c("TX", "CA", "FL", "NY", "WA", "MI", "KY", "WY", "IA")))
 cases_train %>% pull(deaths_class) %>% table()
 
 # Using Everything Except TX, CA, FL, NY To Test
-cases_test <-  casesCensusFinal %>% filter(!(state %in% c("TX", "CA", "FL", "NY")))
+cases_test <-  casesCensusFinal %>% filter(state %in% c("TX", "CA", "FL", "NY", "WA", "MI", "KY", "WY", "IA"))
 cases_test %>% pull(deaths_class) %>% table()
+
+# Add Variables To Map Data
+counties_all <- counties %>% left_join(cases_train %>% 
+  mutate(county = county %>% str_to_lower() %>% 
+  str_replace('\\s+county\\s*$', '')))
 
 # Plot Map With Risk Levels
 ggplot(counties_all, aes(long, lat)) + 
@@ -239,8 +239,7 @@ cases_train <- cases_train %>% select(-c(death_per_case))
 cases_train %>% chi.squared(deaths_class ~ ., data = .) %>% 
   arrange(desc(attr_importance)) %>% head()
 cases_train <- cases_train %>% select(-deaths_per_10000, -cases_per_10000, 
-                                      -confirmed_cases, -deaths, -total_pop,
-                                      -employed_agriculture_forestry_fishing_hunting_mining)
+                                      -confirmed_cases, -deaths)
 cases_train %>% chi.squared(deaths_class ~ ., data = .) %>% 
   arrange(desc(attr_importance)) %>% head(n = 10)
 
@@ -263,11 +262,13 @@ fit <- cases_train %>%
     tuneLength = 5
     )
 
-# Analyze Fit (Variable Importance Without Competing Splits)
+# Analyze Fit
 varImp(fit)
+fit
+
+# Variable Importance Without Competing Splits
 imp <- varImp(fit, compete = FALSE)
 ggplot(imp)
-fit
 imp
 
 
