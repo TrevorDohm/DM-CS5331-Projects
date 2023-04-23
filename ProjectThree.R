@@ -28,10 +28,8 @@ set.seed(1000)
 
 # DATA CLEANING
 
-# Read Data (All Read, Most Likely Will Only Use Census Data)
+# Read Data
 casesCensus <- read_csv("Datasets/COVID-19_cases_plus_census_recent.csv")
-vaccineInfo <- read_csv("Datasets/County_Vaccine_Information.csv")
-casesDeaths <- read_csv("Datasets/COVID-19_cases_TX_updated.csv")
 counties <- as_tibble(map_data("county"))
 
 # Select Features: Plot Map For Test Data
@@ -43,30 +41,15 @@ counties <- counties %>%
 
 # Summary Before Manipulation
 casesCensus
-vaccineInfo
-casesDeaths
 counties
 summary(casesCensus)
-summary(vaccineInfo)
-summary(casesDeaths)
 summary(counties)
 sumtable(casesCensus, out = 'htmlreturn')
-sumtable(vaccineInfo, out = 'htmlreturn')
-sumtable(casesDeaths, out = 'htmlreturn')
 sumtable(counties, out = 'htmlreturn')
 
 # Data Explorer Code
 plot_intro(casesCensus, title = "Intro Plot for U.S. Covid-19 Cases and Census Dataset")
-plot_intro(vaccineInfo, title = "Intro Plot for Texas County Vaccine Sites Dataset")
-plot_intro(casesDeaths, title = "Intro Plot for Texas Cases And Deaths")
 plot_intro(counties, title = "Intro Plot for United States County Positions")
-
-# Clean Vaccine Data (Scale, Remove Columns)
-vaccineInfo <- vaccineInfo %>% mutate_if(is.character, factor)
-vaccineNonNumeric <- vaccineInfo %>% select_if(~!is.numeric(.))
-vaccineNumeric <- vaccineInfo %>% select_if(is.numeric) %>% scale() %>% as_tibble()
-vaccineInfo <- vaccineNumeric %>% add_column(vaccineNonNumeric$us_county) %>% 
-  rename("us_county" = "vaccineNonNumeric$us_county")
 
 # Clean Census Data (Factor, Remove Obsolete Column, Add New Columns)
 # Note: We Want To Predict Death_Per_Case, So We Only Add This Column For Now
@@ -254,7 +237,6 @@ cases_train %>% chi.squared(deaths_class ~ ., data = .) %>%
 # Create Fixed Sampling Scheme With 10 Folds To Compare Models Later
 train_index <- createFolds(cases_train$deaths_class, k = 10)
 
-
 # K-Nearest Neighbors (KNN)
 knnFit <- subset(cases_train, select = -c(county, state)) %>% train(deaths_class ~ .,
                               method = "knn",
@@ -347,7 +329,11 @@ ggplot(counties_test, aes(long, lat)) +
   ggtitle("Risk Level Map Plot - Test Data Ground Truth") +
   scale_fill_manual(values = c('low' = 'yellow', 'medium' = 'orange', 'high' = 'red'))
 
-# Predictions 
+
+
+
+
+# PREDICTIONS
 
 # Prediction Visual For Random Forest Model
 ggplot(counties_test, aes(long, lat)) + 
