@@ -8,6 +8,7 @@ library(ggcorrplot)
 library(dplyr)
 library(readr)
 library(rpart)
+library(rpart.plot)
 library(caret)
 library(seriation)
 library(FSelector)
@@ -30,6 +31,18 @@ casesCensus <- read_csv("Datasets/COVID-19_cases_plus_census_recent.csv")
 vaccineInfo <- read_csv("Datasets/County_Vaccine_Information.csv")
 casesDeaths <- read_csv("Datasets/COVID-19_cases_TX_updated.csv")
 counties <- as_tibble(map_data("county"))
+
+# Select Features: Plot Map For Test Data
+counties <- as_tibble(map_data("county"))
+counties <- counties %>% 
+  rename(c(county = subregion, state = region)) %>%
+  mutate(state = state.abb[match(state, tolower(state.name))]) %>%
+  select(state, county, long, lat, group)
+
+# Add Variables To Map Data
+counties_all <- counties %>% left_join(cases_train %>% 
+  mutate(county = county %>% str_to_lower() %>% 
+  str_replace('\\s+county\\s*$', '')))
 
 # Summary Before Manipulation
 casesCensus
@@ -170,173 +183,161 @@ hmap(corrMatrixFinal, margins = c(10, 10))
 
 
 
-# Idea: Focus on states with Covid-19 outbreaks
-# Use a few states with many cases (training data) to learn a model of how 
-# demographics and socioeconomic factors affect fatalities and then apply the 
-# model to the other states (test data). I define the class variable by discretizing 
-# deaths per a population of 10,000 into below and above 10 deaths.
-
 # CLASS CREATION
 
-# This focuses on counties with covid 19 outbreaks
-# Create deaths_class class variable
-# Consists of values "high", "medium", and "low"
-# High is a death_per_case value greater than 0.016
-# Medium is a value less than 0.02 but greater than 0.011
-# Low is a value less than 0.011 (minimum is 0)
+# Focuses On Counties With Covid-19 Outbreaks
+# Create Deaths_Class Class Variable - Values: "High", "Medium", and "Low"
+# High = 0.016 < Death_Per_Case 
+# Medium = 0.011 < Death_Per_Case < 0.016
+# Low = 0.000 < Death_Per_Case < 0.011
 casesCensusFinal <- casesCensusFinal %>% mutate(deaths_class = case_when(
   death_per_case > 0.016 ~ "high",
   death_per_case > 0.011 ~ "medium",
   TRUE ~ "low"
 ))
 
-# check if class variable is very imbalanced
+# Check If Class Variable Is Very Unbalanced
 casesCensusFinal %>% pull(deaths_class) %>% table()
 
+# Find States Most Affiliated With Their Category
 casesCensusFinal %>% group_by(state) %>% 
   summarize(low_pct = sum(deaths_class == "low")/n()) %>%
   arrange(desc(low_pct))
-
 casesCensusFinal %>% group_by(state) %>% 
   summarize(med_pct = sum(deaths_class == "medium")/n()) %>%
   arrange(desc(med_pct))
-
 casesCensusFinal %>% group_by(state) %>% 
   summarize(high_pct = sum(deaths_class == "high")/n()) %>%
   arrange(desc(high_pct))
 
 
+
+
+
 # SPLIT INTO TRAINING AND TEST DATA
-# using TX, CA, FL, NY to train
+
+# Using TX, CA, FL, NY To Train
 cases_train <- casesCensusFinal %>% filter(state %in% c("TX", "CA", "FL", "NY"))
 cases_train %>% pull(deaths_class) %>% table()
 
-# using everything except TX, CA, FL, NY to test
+# Using Everything Except TX, CA, FL, NY To Test
 cases_test <-  casesCensusFinal %>% filter(!(state %in% c("TX", "CA", "FL", "NY")))
 cases_test %>% pull(deaths_class) %>% table()
 
-# Select Features
-# Plot a map for test data
-counties <- as_tibble(map_data("county"))
-counties <- counties %>% 
-  rename(c(county = subregion, state = region)) %>%
-  mutate(state = state.abb[match(state, tolower(state.name))]) %>%
-  select(state, county, long, lat, group)
-counties 
-
-# add variables to map data
-counties_all <- counties %>% left_join(cases_train %>% 
-                                         mutate(county = county %>% str_to_lower() %>% 
-                                                  str_replace('\\s+county\\s*$', '')))
-
+# Plot Map With Risk Levels
 ggplot(counties_all, aes(long, lat)) + 
   geom_polygon(aes(group = group, fill = deaths_class), color = "black", size = 0.1) + 
-  coord_quickmap() + ggtitle("Level of Risk Map Plot of Training Data for CA, TX, NY, and FL") +
+  coord_quickmap() + ggtitle("Risk Level Map Plot - Training Data: CA, TX, NY, FL") +
   scale_fill_manual(values = c('low' = 'yellow', 'medium' = 'orange', 'high' = 'red'))
   
-
-# check variable importance
-cases_train %>%  chi.squared(deaths_class ~ ., data = .) %>% 
+# Check Variable Importance
+cases_train %>% chi.squared(deaths_class ~ ., data = .) %>% 
   arrange(desc(attr_importance)) %>% head()
 
-# we need to remove the variable that was used to create the class variable
+# Remove Variables (Class Variable, Covid-19 Related Variables)
 cases_train <- cases_train %>% select(-c(death_per_case))
-cases_train %>%  chi.squared(deaths_class ~ ., data = .) %>% 
+cases_train %>% chi.squared(deaths_class ~ ., data = .) %>% 
   arrange(desc(attr_importance)) %>% head()
-
-
-# remove more covid 19 related variables
-cases_train <- cases_train %>% select(-deaths_per_10000,
-                                      -cases_per_10000,
-                                      -confirmed_cases,
-                                      -deaths)
-
-cases_train %>%  chi.squared(deaths_class ~ ., data = .) %>% 
+cases_train <- cases_train %>% select(-deaths_per_10000, -cases_per_10000, 
+                                      -confirmed_cases, -deaths, -total_pop,
+                                      -employed_agriculture_forestry_fishing_hunting_mining)
+cases_train %>% chi.squared(deaths_class ~ ., data = .) %>% 
   arrange(desc(attr_importance)) %>% head(n = 10)
 
 
+
+
+
 # BUILD A MODEL
-# Don’t use county or state name. 
-# The variables are not useful to compare between states 
-# and variables with many levels will make tree-based algorithms very slow.
-# El Dayeh method
+
+# Note: Do Not Use County, State Name (Not Useful)
+# Variables With Many Levels Will Make Tree-Based Algorithms Slower
 fit <- cases_train %>%
   train(deaths_class ~ . - county - state,
-        data = . ,
-        #method = "rpart",
-        method = "rf",
-        #method = "nb",
-        #control = rpart.control(minsplit = 2),
-        trControl = trainControl(method = "cv", number = 10),
-        tuneLength = 5
-  )
-fit
+    data = . ,
+    # method = "rpart",
+    method = "rf",
+    # method = "nb",
+    # control = rpart.control(minsplit = 2),
+    trControl = trainControl(method = "cv", number = 10),
+    tuneLength = 5
+    )
 
+# Analyze Fit (Variable Importance Without Competing Splits)
 varImp(fit)
-
-
-library(rpart.plot)
-#rpart.plot(fit$finalModel, extra = 2)
-
-# Variable importance without competing splits
 imp <- varImp(fit, compete = FALSE)
-imp
 ggplot(imp)
-
-# Hassler Method
-fit2 <- cases_train %>%
-  train(deaths_class ~ . - county - state,
-        data = . ,
-        method = "rpart",
-        #method = "rf",
-        #method = "nb",
-        control = rpart.control(minsplit = 2),
-        trControl = trainControl(method = "cv", number = 10),
-        tuneLength = 5
-  )
-fit2
-
-varImp(fit2)
-
-
-library(rpart.plot)
-rpart.plot(fit2$finalModel, extra = 2)
-
-# Variable importance without competing splits
-imp2 <- varImp(fit2, compete = FALSE)
-imp2
-ggplot(imp2)
+fit
+imp
 
 
 
-# USE MODEL FOR THE REST OF THE US
-# caret does not make prediction with missing data
+
+
+# USE MODEL FOR THE REST OF UNITED STATES
+
+# Caret Does Not Make Prediction With Missing Data
 cases_test_edit <- cases_test %>% na.omit
-cases_test_edit$risk_predicted <- predict(fit2, subset(cases_test_edit, select = -c(deaths_class)))
+cases_test_edit$risk_predicted <- predict(fit, subset(cases_test_edit, select = -c(deaths_class)))
 
-# visualize the results
+# Visualize The Result
 counties_test <- counties %>% left_join(cases_test_edit %>% 
-                                          mutate(county = county %>% str_to_lower() %>% 
-                                                   str_replace('\\s+county\\s*$', '')))
-# ground truth
+  mutate(county = county %>% str_to_lower() %>% 
+  str_replace('\\s+county\\s*$', '')))
+
+# Ground Truth
 ggplot(counties_test, aes(long, lat)) + 
   geom_polygon(aes(group = group, fill = deaths_class), color = "black", size = 0.1) + 
   coord_quickmap() + 
   scale_fill_manual(values = c('low' = 'yellow', 'medium' = 'orange', 'high' = 'red'))
 
-# predictions
+# Predictions
 ggplot(counties_test, aes(long, lat)) + 
   geom_polygon(aes(group = group, fill = risk_predicted), color = "black", size = 0.1) + 
   coord_quickmap() + 
   scale_fill_manual(values = c('low' = 'yellow', 'medium' = 'orange', 'high' = 'red'))
 
-# confusion matrix
+# Confusion Matrix
 confusionMatrix(data = as.factor(cases_test_edit$risk_predicted), ref = as.factor(cases_test_edit$deaths_class))
+
+
 
 
 
 ### END
 
+
+
+
+
+# Use a few states with many cases (training data) to learn a model of how 
+# demographics and socioeconomic factors affect fatalities and then apply the 
+# model to the other states (test data). I define the class variable by discretizing 
+# deaths per a population of 10,000 into below and above 10 deaths.
+
+
+# Hassler Method
+# fit2 <- cases_train %>%
+#   train(deaths_class ~ . - county - state,
+#         data = . ,
+#         method = "rpart",
+#         #method = "rf",
+#         #method = "nb",
+#         control = rpart.control(minsplit = 2),
+#         trControl = trainControl(method = "cv", number = 10),
+#         tuneLength = 5
+#   )
+# fit2
+# 
+# varImp(fit2)
+# 
+# 
+# rpart.plot(fit2$finalModel, extra = 2)
+# 
+# # Variable importance without competing splits
+# imp2 <- varImp(fit2, compete = FALSE)
+# imp2
+# ggplot(imp2)
 
 
 
