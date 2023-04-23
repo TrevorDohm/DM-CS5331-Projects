@@ -316,11 +316,19 @@ summary(resamps)
 bwplot(resamps, layout = c(3, 1))
 
 
+
+
 # USE MODEL FOR THE REST OF UNITED STATES
 
 # Caret Does Not Make Prediction With Missing Data
 cases_test_edit <- cases_test %>% na.omit
-cases_test_edit$risk_predicted <- predict(fit, subset(cases_test_edit, select = -c(deaths_class)))
+# Random Forest Prediction
+cases_test_edit$risk_predicted_RF <- predict(fit, subset(cases_test_edit, select = -c(deaths_class)))
+# KNN Prediction
+cases_test_edit$risk_predicted_KNN <- predict(knnFit, subset(cases_test_edit, select = -c(deaths_class)))
+# Artificial Neural Network Prediction
+cases_test_edit$risk_predicted_ANN <- predict(nnetFit, subset(cases_test_edit, select = -c(deaths_class)))
+
 
 # Visualize The Result
 counties_test <- counties %>% left_join(cases_test_edit %>% 
@@ -333,14 +341,29 @@ ggplot(counties_test, aes(long, lat)) +
   coord_quickmap() + 
   scale_fill_manual(values = c('low' = 'yellow', 'medium' = 'orange', 'high' = 'red'))
 
-# Predictions
+# Predictions 
+# Prediction Visual for Random Forest Model
 ggplot(counties_test, aes(long, lat)) + 
-  geom_polygon(aes(group = group, fill = risk_predicted), color = "black", size = 0.1) + 
+  geom_polygon(aes(group = group, fill = risk_predicted_RF), color = "black", size = 0.1) + 
+  coord_quickmap() + 
+  scale_fill_manual(values = c('low' = 'yellow', 'medium' = 'orange', 'high' = 'red'))
+
+# Prediction Visual for KNN Model
+ggplot(counties_test, aes(long, lat)) + 
+  geom_polygon(aes(group = group, fill = risk_predicted_KNN), color = "black", size = 0.1) + 
+  coord_quickmap() + 
+  scale_fill_manual(values = c('low' = 'yellow', 'medium' = 'orange', 'high' = 'red'))
+
+# Prediction Visual for Artificial Neural Network Model
+ggplot(counties_test, aes(long, lat)) + 
+  geom_polygon(aes(group = group, fill = risk_predicted_ANN), color = "black", size = 0.1) + 
   coord_quickmap() + 
   scale_fill_manual(values = c('low' = 'yellow', 'medium' = 'orange', 'high' = 'red'))
 
 # Confusion Matrix
-confusionMatrix(data = as.factor(cases_test_edit$risk_predicted), ref = as.factor(cases_test_edit$deaths_class))
+confusionMatrix(data = as.factor(cases_test_edit$risk_predicted_RF), ref = as.factor(cases_test_edit$deaths_class))
+confusionMatrix(data = as.factor(cases_test_edit$risk_predicted_KNN), ref = as.factor(cases_test_edit$deaths_class))
+confusionMatrix(data = as.factor(cases_test_edit$risk_predicted_ANN), ref = as.factor(cases_test_edit$deaths_class))
 
 
 
