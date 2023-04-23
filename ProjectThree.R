@@ -314,8 +314,8 @@ resamps <- resamples(list(
 resamps
 summary(resamps)
 
-# Visualization For Model Comparison
-bwplot(resamps, layout = c(3, 1))
+# Visualization for Model Comparison
+bwplot(resamps, layout = c(3, 1), main="Box-and-Whisker Plot of Accuracies and Kappa Values for Each Model")
 
 
 
@@ -344,6 +344,7 @@ counties_test <- counties %>% left_join(cases_test_edit %>%
 ggplot(counties_test, aes(long, lat)) + 
   geom_polygon(aes(group = group, fill = deaths_class), color = "black", size = 0.1) + 
   coord_quickmap() + 
+  ggtitle("Risk Level Map Plot - Test Data Ground Truth") +
   scale_fill_manual(values = c('low' = 'yellow', 'medium' = 'orange', 'high' = 'red'))
 
 # Predictions 
@@ -352,18 +353,21 @@ ggplot(counties_test, aes(long, lat)) +
 ggplot(counties_test, aes(long, lat)) + 
   geom_polygon(aes(group = group, fill = risk_predicted_RF), color = "black", size = 0.1) + 
   coord_quickmap() + 
+  ggtitle("Risk Level Map Plot - Test Data Random Forest Predictions") +
   scale_fill_manual(values = c('low' = 'yellow', 'medium' = 'orange', 'high' = 'red'))
 
 # Prediction Visual For KNN Model
 ggplot(counties_test, aes(long, lat)) + 
   geom_polygon(aes(group = group, fill = risk_predicted_KNN), color = "black", size = 0.1) + 
   coord_quickmap() + 
+  ggtitle("Risk Level Map Plot - Test Data K-Nearest Neighbors Predictions") +
   scale_fill_manual(values = c('low' = 'yellow', 'medium' = 'orange', 'high' = 'red'))
 
 # Prediction Visual For Artificial Neural Network Model
 ggplot(counties_test, aes(long, lat)) + 
   geom_polygon(aes(group = group, fill = risk_predicted_ANN), color = "black", size = 0.1) + 
   coord_quickmap() + 
+  ggtitle("Risk Level Map Plot - Test Data Artificial Neural Network Predictions") +
   scale_fill_manual(values = c('low' = 'yellow', 'medium' = 'orange', 'high' = 'red'))
 
 # Confusion Matrix
