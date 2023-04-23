@@ -231,8 +231,8 @@ counties_all <- counties %>% left_join(cases_train %>%
 
 ggplot(counties_all, aes(long, lat)) + 
   geom_polygon(aes(group = group, fill = deaths_class), color = "black", size = 0.1) + 
-  coord_quickmap() + ggtitle("Level of Risk Map Plot of Training Data for CA, TX, NY, and FL") 
-+ scale_fill_manual(values = c('low' = 'yellow', 'medium' = 'orange', 'high' = 'red'))
+  coord_quickmap() + ggtitle("Level of Risk Map Plot of Training Data for CA, TX, NY, and FL") +
+  scale_fill_manual(values = c('low' = 'yellow', 'medium' = 'orange', 'high' = 'red'))
   
 
 # check variable importance
@@ -244,9 +244,6 @@ cases_train <- cases_train %>% select(-c(death_per_case))
 cases_train %>%  chi.squared(deaths_class ~ ., data = .) %>% 
   arrange(desc(attr_importance)) %>% head()
 
-cases_test <- cases_test %>% select(-c(death_per_case))
-cases_test %>%  chi.squared(deaths_class ~ ., data = .) %>% 
-  arrange(desc(attr_importance)) %>% head()
 
 # remove more covid 19 related variables
 cases_train <- cases_train %>% select(-deaths_per_10000,
@@ -256,15 +253,6 @@ cases_train <- cases_train %>% select(-deaths_per_10000,
 
 cases_train %>%  chi.squared(deaths_class ~ ., data = .) %>% 
   arrange(desc(attr_importance)) %>% head(n = 10)
-
-cases_test <- cases_test %>% select(-deaths_per_10000,
-                                    -cases_per_10000,
-                                    -confirmed_cases,
-                                    -deaths)
-
-cases_test %>%  chi.squared(deaths_class ~ ., data = .) %>% 
-  arrange(desc(attr_importance)) %>% head(n = 10)
-
 
 
 # BUILD A MODEL
@@ -343,7 +331,7 @@ ggplot(counties_test, aes(long, lat)) +
   scale_fill_manual(values = c('low' = 'yellow', 'medium' = 'orange', 'high' = 'red'))
 
 # confusion matrix
-confusionMatrix(data = cases_test_edit$risk_predicted, ref = cases_test_edit$deaths_class)
+confusionMatrix(data = as.factor(cases_test_edit$risk_predicted), ref = as.factor(cases_test_edit$deaths_class))
 
 
 
