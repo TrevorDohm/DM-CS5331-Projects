@@ -167,7 +167,7 @@ counties$county <- as.factor(sapply(counties$county, sub, pattern = "de\\s", rep
 # Daggett County, Utah (Percent_Income_Spent_On_Rent NA)
 # King County, Texas (Owner_Occupied_Housing_Units_Upper_Value_Quartile NA)
 # Kenedy County, Texas (Owner_Occupied_Housing_Units_Upper_Value_Quartile NA)
-# Kalawao County, Hawaii (Owner_Occupied_Housing_Units_Upper_Value_Quartile NA) (Trash Data)
+# Kalawao County, Hawaii (Owner_Occupied_Housing_Units_Upper_Value_Quartile NA) (Trash Data, all NA, no confirmed cases)
 # Lake and Peninsula Borough, Alaska (Median_Year_Structure_Built NA)
 # Hoonah-Angoon Census Area, Alaska (Zero Confirmed Cases, Filtered Out)
 
@@ -312,10 +312,11 @@ fit <- cases_train %>%
 
 # Analyze Fit
 fit$finalModel
+fit
 
 # Analyze Fit (Variable Importance Without Competing Splits)
-varImp(fit)
-fit
+rfImp <- varImp(fit)
+ggplot(rfImp) + ggtitle("rf imp")
 
 # Variable Importance Without Competing Splits
 imp <- varImp(fit, compete = FALSE)
