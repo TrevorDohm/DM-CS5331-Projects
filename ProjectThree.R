@@ -84,6 +84,7 @@ importance <- varImp(model, scale = FALSE)
 plot(importance, top = 30)
 
 # Subset Upon Important Features
+# Get Rid of outcome variables, (add pop)
 ImpMeasure <- data.frame(importance$importance)
 ImpMeasure$Vars <- row.names(ImpMeasure)
 casesCensusUpdatedNumeric <- casesCensusUpdatedNumeric %>% 
@@ -140,6 +141,41 @@ casesCensusFinal <- casesCensusFinal %>% select_if(is.numeric) %>% as_tibble() %
 casesCensusFinal <- casesCensusFinal %>% 
   mutate(county = county %>% str_to_lower() %>% str_replace('\\s+county\\s*$', '')) %>%
   arrange(desc(confirmed_cases)) %>% mutate_if(is.character, factor)
+
+# Fix Counties (Not Matching County Names)
+casesCensusFinal$county <- as.factor(sapply(casesCensusFinal$county, sub, pattern = "(?i)\\sparish", replacement = "")) # Counties Ending With Parish (Louisiana)
+casesCensusFinal$county <- as.factor(sapply(casesCensusFinal$county, sub, pattern = "st\\.", replacement = "st")) # Counties Starting With St. (St. Louis)
+casesCensusFinal$county <- as.factor(sapply(casesCensusFinal$county, sub, pattern = "ste\\.", replacement = "ste")) # Counties Starting With Ste. (Ste. Genevieve)
+casesCensusFinal$county <- as.factor(sapply(casesCensusFinal$county, sub, pattern = "consolidated municipality of ", replacement = "")) # Carson City, NV
+casesCensusFinal$county <- as.factor(sapply(casesCensusFinal$county, sub, pattern = "city and county of ", replacement = "")) # San Francisco, CA
+casesCensusFinal$county <- as.factor(sapply(casesCensusFinal$county, sub, pattern = "city of st louis", replacement = "st louis city")) # Saint Louis City, MO
+casesCensusFinal$county <- as.factor(sapply(casesCensusFinal$county, sub, pattern = "town and county of ", replacement = "")) # Nantucket, MA
+casesCensusFinal$county <- as.factor(sapply(casesCensusFinal$county, sub, pattern = "city of ", replacement = "")) # Counties Starting With City Of (City Of Suffolk)
+casesCensusFinal$county <- as.factor(sapply(casesCensusFinal$county, sub, pattern = "o'", replacement = "o")) # O'Brien County, IA
+casesCensusFinal$county <- as.factor(sapply(casesCensusFinal$county, sub, pattern = "'s", replacement = "s")) # Queen Anne's County, MD
+counties$county <- as.factor(sapply(counties$county, sub, pattern = "du page", replacement = "dupage")) # Du Page County, IL
+
+# Fixes Counties Starting With La (La Salle)
+casesCensusFinal$county <- as.factor(sapply(casesCensusFinal$county, sub, pattern = "la\\s", replacement = "la"))
+counties$county <- as.factor(sapply(counties$county, sub, pattern = "la\\s", replacement = "la"))
+
+# Fixes Counties Starting With De (De Kalb)
+casesCensusFinal$county <- as.factor(sapply(casesCensusFinal$county, sub, pattern = "de\\s", replacement = "de"))
+counties$county <- as.factor(sapply(counties$county, sub, pattern = "de\\s", replacement = "de"))
+
+# Removed Counties (Matches With Above)
+# Daggett County, Utah (Percent_Income_Spent_On_Rent NA)
+# King County, Texas (Owner_Occupied_Housing_Units_Upper_Value_Quartile NA)
+# Kenedy County, Texas (Owner_Occupied_Housing_Units_Upper_Value_Quartile NA)
+# Kalawao County, Hawaii (Owner_Occupied_Housing_Units_Upper_Value_Quartile NA) (Trash Data)
+# Lake and Peninsula Borough, Alaska (Median_Year_Structure_Built NA)
+# Hoonah-Angoon Census Area, Alaska (Zero Confirmed Cases, Filtered Out)
+
+# Note Owner_Occupied_Housing_Units_Upper_Value_Quartile Is Of High Importance, Thus We Keep It
+
+# Missing County Locations
+# District of Columbia, Washington DC
+# Hawaii, Alaska (No Locations Given)
 
 # Check Correlation For Numeric Variables (Before Normalization)
 corrMatrixFinal <- cor(casesCensusFinal %>% select_if(is.numeric))
@@ -207,7 +243,7 @@ cases_test %>% pull(deaths_class) %>% table()
 # Add Variables To Map Data
 counties_all <- counties %>% left_join(cases_train %>% 
   mutate(county = county %>% str_to_lower() %>% 
-  str_replace('\\s+county\\s*$', '')))
+  str_replace('\\s+county\\s*$', '')), relationship = "many-to-many")
 
 # Plot Map With Risk Levels
 ggplot(counties_all, aes(long, lat)) + 
