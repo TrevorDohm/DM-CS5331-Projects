@@ -232,12 +232,18 @@ casesCensusFinal %>% group_by(state) %>%
 
 # SPLIT INTO TRAINING AND TEST DATA
 
-# Using TX, CA, FL, NY To Train
-cases_train <- casesCensusFinal %>% filter(!(state %in% c("TX", "CA", "FL", "NY", "WA", "MI", "KY", "WY", "IA")))
+# Training Data
+# cases_train <- casesCensusFinal %>% filter(!(state %in% c("TX", "CA", "FL", "NY", "WA", "MI", "KY", "WY", "IA")))
+cases_train <- casesCensusFinal %>% filter(!(state %in% c("AL", "ME", "CA", "MI",
+                                                          "CO", "SC", "NH", "VA",
+                                                          "ND", "WI", "KS", "ID")))
 cases_train %>% pull(deaths_class) %>% table()
 
-# Using Everything Except TX, CA, FL, NY To Test
-cases_test <-  casesCensusFinal %>% filter(state %in% c("TX", "CA", "FL", "NY", "WA", "MI", "KY", "WY", "IA"))
+# Testing Data
+# cases_test <-  casesCensusFinal %>% filter(state %in% c("TX", "CA", "FL", "NY", "WA", "MI", "KY", "WY", "IA"))
+cases_test <-  casesCensusFinal %>% filter(state %in% c("AL", "ME", "CA", "MI",
+                                                        "CO", "SC", "NH", "VA",
+                                                        "ND", "WI", "KS", "ID"))
 cases_test %>% pull(deaths_class) %>% table()
 
 # Add Variables To Map Data
