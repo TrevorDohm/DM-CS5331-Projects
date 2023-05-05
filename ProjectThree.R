@@ -75,7 +75,7 @@ diag(corrMatrixRemove) <- 0
 casesCensusUpdatedNumeric <- casesCensusUpdatedNumeric[, !apply(corrMatrixRemove, 2, function(x) any(x > 0.95))]
 corrMatrix <- cor(casesCensusUpdatedNumeric)
 ggcorrplot(corrMatrix, insig = "blank", hc.order = TRUE) + ggtitle("Correlation Matrix After Removing Highly Correlated Variables")
-hmap(corrMatrix, margins = c(10, 10))
+# hmap(corrMatrix, margins = c(10, 10))
 
 # Good Example Of Feature Extraction (Predict Death_Per_Case)
 control <- trainControl(method = "repeatedcv", number = 10, repeats = 3)
@@ -91,7 +91,7 @@ casesCensusUpdatedNumeric <- casesCensusUpdatedNumeric %>%
   select(ImpMeasure[order(-ImpMeasure$Overall),][1:30,]$Vars)
 corrMatrix <- cor(casesCensusUpdatedNumeric)
 ggcorrplot(corrMatrix, insig = "blank", hc.order = TRUE) + ggtitle("Correlation Matrix With Top Important Variables (30)")
-hmap(corrMatrix, margins = c(10, 10))
+# hmap(corrMatrix, margins = c(10, 10))
 
 # PCA: SAMPLE CODE - DO NOT USE
 # casesCensusUpdatedNumericPCA <- princomp(corrMatrix)
@@ -179,7 +179,8 @@ counties$county <- as.factor(sapply(counties$county, sub, pattern = "de\\s", rep
 
 # Check Correlation For Numeric Variables (Before Normalization)
 corrMatrixFinal <- cor(casesCensusFinal %>% select_if(is.numeric))
-hmap(corrMatrixFinal, margins = c(10, 10))
+ggcorrplot(corrMatrixFinal, insig = "blank", hc.order = TRUE) + ggtitle("Correlation Matrix For Correlated Numeric Variables Before Normalization")
+# hmap(corrMatrixFinal, margins = c(10, 10))
 
 # Normalization
 casesCensusFinal[, -(1:8)] <- casesCensusFinal[, -(1:8)] / casesCensusFinal$total_pop
@@ -193,6 +194,7 @@ str(casesCensusFinal)
 
 # Check Correlation For Numeric Variables (After Normalization)
 corrMatrixFinal <- cor(casesCensusFinal %>% select_if(is.numeric))
+ggcorrplot(corrMatrixFinal, insig = "blank", hc.order = TRUE) + ggtitle("Correlation Matrix For Correlated Numeric Variables After Normalization")
 hmap(corrMatrixFinal, margins = c(10, 10))
 
 
@@ -322,7 +324,7 @@ fit
 
 # Analyze Fit (Variable Importance Without Competing Splits)
 rfImp <- varImp(fit)
-ggplot(rfImp) + ggtitle("rf imp")
+ggplot(rfImp) + ggtitle("Random Forest Importance")
 
 # Variable Importance Without Competing Splits
 imp <- varImp(fit, compete = FALSE)
