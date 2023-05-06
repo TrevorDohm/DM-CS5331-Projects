@@ -191,11 +191,12 @@ datatable(casesCensusFinal) %>% formatRound(c(5, 9, 10), 2) %>% formatPercentage
 summary(casesCensusFinal)
 table(complete.cases(casesCensusFinal))
 str(casesCensusFinal)
+sapply(casesCensusFinal[, -(1:2)], sd)
 
 # Check Correlation For Numeric Variables (After Normalization)
 corrMatrixFinal <- cor(casesCensusFinal %>% select_if(is.numeric))
 ggcorrplot(corrMatrixFinal, insig = "blank", hc.order = TRUE) + ggtitle("Correlation Matrix For Correlated Numeric Variables After Normalization")
-hmap(corrMatrixFinal, margins = c(10, 10))
+# hmap(corrMatrixFinal, margins = c(10, 10))
 
 
 
@@ -365,7 +366,7 @@ cases_test_edit$risk_predicted_ANN <- predict(nnetFit, subset(cases_test_edit, s
 # Visualize The Result
 counties_test <- counties %>% left_join(cases_test_edit %>% 
   mutate(county = county %>% str_to_lower() %>% 
-  str_replace('\\s+county\\s*$', '')))
+  str_replace('\\s+county\\s*$', '')), relationship = "many-to-many")
 
 # Ground Truth
 ggplot(counties_test, aes(long, lat)) + 
